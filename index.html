@@ -6,7 +6,7 @@
 <title>Jogo de Saltos - 20 Fases</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; font-family: Arial, sans-serif; }
-  body { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; background:#222; }
+  body { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; background:#222; overflow:hidden; }
   #menu, #game, #game-over { width:100%; max-width:900px; text-align:center; }
   h1 { color:#fff; margin-bottom:20px; }
   button { padding:10px 20px; margin:10px; font-weight:bold; border:none; border-radius:5px; cursor:pointer; transition:0.3s; }
@@ -47,19 +47,22 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 let cw, ch;
-function resizeCanvas() { cw = canvas.width = canvas.clientWidth; ch = canvas.height = canvas.clientHeight; }
+function resizeCanvas() {
+  cw = canvas.width = canvas.clientWidth;
+  ch = canvas.height = canvas.clientHeight;
+}
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
 // Variáveis do jogo
-let player = {x:50, y:0, w:30, h:30, vy:0, jump: -12, color:'#ff3'};
+let player = {x:50, y:0, w:30, h:30, vy:0, jump:-14, color:'#ff3'};
 let obstacles = [];
 let currentPhase = 1;
 let maxPhase = 1;
 let gameLoopId;
 let failAudio = document.getElementById('fail-audio');
 let gameActive = false;
-let speed = 4;
+let speed = 5;
 
 // Criar menu fases
 const phaseMenu = document.getElementById('phase-menu');
@@ -91,15 +94,16 @@ function startGame(phase){
 function resetGame(){
   player.y = ch - 60; player.vy = 0;
   obstacles = [];
-  for(let i=0;i<5+currentPhase;i++){
-    let w = 20+Math.random()*20;
-    let h = 20+Math.random()*20;
-    let x = cw + i*200;
-    let y = ch - h - Math.random()*100;
+  for(let i=0;i<6+currentPhase;i++){
+    let w = 30+Math.random()*30;
+    let h = 20+Math.random()*40;
+    let x = cw + i*200 + Math.random()*100;
+    let y = ch - h - Math.random()*50;
     obstacles.push({x,y,w,h});
   }
 }
 
+// Loop principal
 function gameLoop(){
   if(!gameActive) return;
   ctx.clearRect(0,0,cw,ch);
@@ -112,7 +116,7 @@ function gameLoop(){
   // gravidade
   player.vy += 0.8;
   player.y += player.vy;
-  if(player.y + player.h > ch-20) { player.y = ch-20 - player.h; player.vy=0; }
+  if(player.y + player.h > ch-20){ player.y = ch-20 - player.h; player.vy=0; }
   // obstáculos
   ctx.fillStyle='#f33';
   for(let obs of obstacles){
