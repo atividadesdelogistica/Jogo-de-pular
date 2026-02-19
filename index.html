@@ -3,69 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pixel Runner Game</title>
+<title>Pixel Runner Pro</title>
 <style>
-  body, html {
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-    font-family: Arial, sans-serif;
-    background-color: #222;
-  }
-  canvas {
-    display: block;
-    margin: 0 auto;
-    background-color: #111;
-  }
-  #menu, #gameOver {
-    position: absolute;
-    top:0; left:0;
-    width:100%; height:100%;
-    display:flex;
-    flex-direction:column;
-    justify-content:center;
-    align-items:center;
-    background: rgba(0,0,0,0.8);
-    color: #fff;
-    font-size: 24px;
-    z-index: 10;
-  }
-  button {
-    padding: 10px 20px;
-    margin: 10px;
-    font-size: 18px;
-    cursor: pointer;
-    border:none;
-    border-radius:5px;
-    background-color: #1f8ef1;
-    color:white;
-  }
-  #touchControls {
-    position:absolute;
-    bottom:10px;
-    width:100%;
-    display:flex;
-    justify-content: space-between;
-    padding: 0 20px;
-    pointer-events: auto;
-  }
-  .arrow {
-    width:60px;
-    height:60px;
-    background: rgba(255,255,255,0.3);
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    font-size:30px;
-    border-radius:10px;
-    user-select:none;
-  }
+  body, html { margin:0; padding:0; overflow:hidden; background:#111; font-family:Arial, sans-serif; }
+  canvas { display:block; margin:0 auto; background:#222; }
+  #menu, #gameOver { position:absolute; top:0; left:0; width:100%; height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; background: rgba(0,0,0,0.85); color:#fff; font-size:24px; z-index:10; }
+  button { padding:10px 20px; margin:10px; font-size:18px; cursor:pointer; border:none; border-radius:5px; background:#1f8ef1; color:white; }
+  #touchControls { position:absolute; bottom:10px; width:100%; display:flex; justify-content: space-between; padding: 0 20px; pointer-events:auto; }
+  .arrow { width:60px; height:60px; background: rgba(255,255,255,0.3); display:flex; justify-content:center; align-items:center; font-size:30px; border-radius:10px; user-select:none; }
 </style>
 </head>
 <body>
 
 <div id="menu">
-  <h1>Pixel Runner</h1>
+  <h1>Pixel Runner Pro</h1>
   <p>Escolha uma fase</p>
   <div id="faseButtons"></div>
 </div>
@@ -74,7 +25,7 @@
 
 <div id="gameOver" style="display:none;">
   <h1>Game Over</h1>
-  <img id="gameOverImg" src="" alt="Game Over" style="width:150px;height:150px;margin:20px;">
+  <img id="gameOverImg" src="https://i.imgur.com/3VZ2sZn.png" alt="Game Over" style="width:150px;height:150px;margin:20px;">
   <button onclick="restartGame()">Jogar de novo</button>
 </div>
 
@@ -90,17 +41,17 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-let gameState = 'menu'; // 'menu', 'playing', 'gameOver'
+let gameState = 'menu';
 let currentPhase = 1;
 let maxPhase = 20;
 let phasesUnlocked = 1;
 let obstacles = [];
-let player = {x:50, y:350, width:30, height:30, dy:0, onGround:true};
+let player = {x:50, y:350, width:30, height:30, dy:0, onGround:true, moveLeft:false, moveRight:false};
 let gravity = 1.2;
 let speed = 4;
 let score = 0;
 
-// Menu dinamico
+// Menu Dinâmico
 const faseButtons = document.getElementById('faseButtons');
 function updateMenu() {
   faseButtons.innerHTML = '';
@@ -114,26 +65,24 @@ function updateMenu() {
 }
 updateMenu();
 
-// Obstacle generator
+// Gera obstáculos
 function generateObstacles(phase){
   obstacles = [];
   let obsCount = phase + 2;
   for(let i=0;i<obsCount;i++){
-    let obsX = 400 + i*200 + Math.random()*200;
-    let obsHeight = 20 + Math.random()*60;
+    let obsX = 400 + i*200 + Math.random()*150;
+    let obsHeight = 20 + Math.random()*50; // Altura menor para pular
     obstacles.push({x:obsX, y:canvas.height-obsHeight, width:30, height:obsHeight});
   }
 }
 
 // Game loop
-let keys = {left:false,right:false,up:false};
 function gameLoop(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
   // Player movement
-  if(keys.left) player.x -= speed;
-  if(keys.right) player.x += speed;
-  if(keys.up && player.onGround){ player.dy = -15; player.onGround=false; }
+  if(player.moveLeft) player.x -= speed;
+  if(player.moveRight) player.x += speed;
 
   player.dy += gravity;
   player.y += player.dy;
@@ -143,7 +92,7 @@ function gameLoop(){
     player.onGround = true;
   }
 
-  // Draw player
+  // Draw player (pixel style)
   ctx.fillStyle = 'cyan';
   ctx.fillRect(player.x, player.y, player.width, player.height);
 
@@ -187,11 +136,13 @@ function startPhase(phase){
   player.y=350;
   player.dy=0;
   player.onGround=true;
+  player.moveLeft=false;
+  player.moveRight=false;
   generateObstacles(phase);
   document.getElementById('menu').style.display='none';
   document.getElementById('gameOver').style.display='none';
   window.scrollTo(0,0);
-  setTimeout(()=>{gameLoop();}, 250); // pequeno delay
+  setTimeout(()=>{gameLoop();}, 250); 
 }
 
 // Show Menu
@@ -202,10 +153,11 @@ function showMenu(){
 
 // Game Over
 function triggerGameOver(){
+  if(gameState!=='playing') return;
   gameState='gameOver';
   document.getElementById('gameOverImg').src='https://i.imgur.com/3VZ2sZn.png';
   const deathSound = document.getElementById('deathSound');
-  deathSound.currentTime = 0;
+  deathSound.currentTime=0;
   deathSound.play();
   setTimeout(()=>{
     document.getElementById('gameOver').style.display='flex';
@@ -220,14 +172,13 @@ function restartGame(){
 
 // Keyboard
 document.addEventListener('keydown', e=>{
-  if(e.key==='ArrowLeft') keys.left=true;
-  if(e.key==='ArrowRight') keys.right=true;
-  if(e.key==='ArrowUp') keys.up=true;
+  if(e.key==='ArrowLeft') player.moveLeft=true;
+  if(e.key==='ArrowRight') player.moveRight=true;
+  if(e.key==='ArrowUp' && player.onGround){ player.dy=-15; player.onGround=false; }
 });
 document.addEventListener('keyup', e=>{
-  if(e.key==='ArrowLeft') keys.left=false;
-  if(e.key==='ArrowRight') keys.right=false;
-  if(e.key==='ArrowUp') keys.up=false;
+  if(e.key==='ArrowLeft') player.moveLeft=false;
+  if(e.key==='ArrowRight') player.moveRight=false;
 });
 
 // Touch Controls
@@ -235,9 +186,18 @@ const leftArrow = document.getElementById('leftArrow');
 const rightArrow = document.getElementById('rightArrow');
 const upArrow = document.getElementById('upArrow');
 
-function setupTouch(arrow, dir){
-  arrow.addEventListener('touchstart', e=>{ keys[dir]=true; e.preventDefault(); });
-  arrow.addEventListener('touchend', e=>{ keys[dir]=false; e.preventDefault(); });
+function setupTouch(arrow, action){
+  arrow.addEventListener('touchstart', e=>{
+    if(action==='left') player.moveLeft=true;
+    if(action==='right') player.moveRight=true;
+    if(action==='up' && player.onGround){ player.dy=-15; player.onGround=false; }
+    e.preventDefault();
+  });
+  arrow.addEventListener('touchend', e=>{
+    if(action==='left') player.moveLeft=false;
+    if(action==='right') player.moveRight=false;
+    e.preventDefault();
+  });
 }
 
 setupTouch(leftArrow,'left');
