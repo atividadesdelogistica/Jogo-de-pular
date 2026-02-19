@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jogo Pular Blocos</title>
+<style>
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    background-color: #1a1a1a;
+    color: #fff;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  #game-container {
+    position: relative;
+    width: 90%;
+    max-width: 500px;
+    height: 400px;
+    background-color: #222;
+    margin-top: 20px;
+    overflow: hidden;
+    border-radius: 10px;
+  }
+
+  #player {
+    position: absolute;
+    bottom: 0;
+    left: 50px;
+    width: 50px;
+    height: 50px;
+    background-color: #4caf50;
+    border-radius: 10px;
+    transition: bottom 0.2s;
+  }
+
+  .block {
+    position: absolute;
+    bottom: 0;
+    width: 50px;
+    height: 50px;
+    background-color: #f44336;
+    border-radius: 5px;
+  }
+
+  #score {
+    margin-top: 15px;
+    font-size: 1.2em;
+  }
+
+  #gameOver {
+    display: none;
+    position: absolute;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background-color: rgba(0,0,0,0.9);
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    z-index: 1000;
+  }
+
+  #gameOver img {
+    width: 200px;
+    margin-bottom: 20px;
+  }
+
+  #gameOver button {
+    padding: 10px 20px;
+    font-size: 1em;
+    background-color: #4caf50;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  #gameOver button:hover {
+    background-color: #3e8e41;
+  }
+</style>
+</head>
+<body>
+
+<h1>Jogo Pular Blocos</h1>
+<div id="score">Pontuação: 0</div>
+<div id="game-container">
+  <div id="player"></div>
+  <div id="gameOver">
+    <img src="gameover.png" alt="Game Over">
+    <button onclick="restartGame()">Reiniciar</button>
+  </div>
+</div>
+
+<audio id="fail-sound" src="musica.mp3"></audio>
+
+<script>
+const player = document.getElementById('player');
+const gameContainer = document.getElementById('game-container');
+const failSound = document.getElementById('fail-sound');
+const scoreEl = document.getElementById('score');
+const gameOver = document.getElementById('gameOver');
+
+let blocks = [];
+let score = 0;
+let gameSpeed = 2;
+let spawnInterval = 2000;
+let jumpHeight = 100;
+let isJumping = false;
+let gameLoopInterval, spawnIntervalId;
+
+// Controle pular
+function jump() {
+  if(isJumping) return;
+  isJumping = true;
+  player.style.bottom = jumpHeight + 'px';
+  setTimeout(() => {
+    player.style.bottom = '0px';
+    isJumping = false;
+  }, 400);
+}
+
+// Evento teclado e toque
+document.addEventListener('keydown', e => { if(e.code === 'Space') jump(); });
+gameContainer.addEventListener('touchstart', jump);
+
+// Criar blocos
+function createBlock() {
+  const block = document.createElement('div');
+  block.classList.add('block');
+  block.style.right = '0px';
+  block.style.height = (Math.random() * 50 + 30) + 'px';
+  gameContainer.appendChild(block);
+  blocks.push(block);
+}
+
+// Atualizar jogo
+function update() {
+  blocks.forEach((block, index) => {
+    const right = parseInt(block.style.right);
+    block.style.right = right + gameSpeed + 'px';
+
+    const playerRect = player.getBoundingClientRect();
+    const blockRect = block.getBoundingClientRect();
+
+    if(!(playerRect.bottom < blockRect.top || playerRect.top > blockRect.bottom || playerRect.right < blockRect.left || playerRect.left > blockRect.right)){
+      fail();
+    }
+
+    if(right > gameContainer.offsetWidth){
+      block.remove();
+      blocks.splice(index,1);
+      score++;
+      scoreEl.innerText = 'Pontuação: '+score;
+      if(score % 5 === 0) gameSpeed += 0.5; // aumenta dificuldade
+    }
+  });
+}
+
+// Game over
+function fail() {
+  failSound.currentTime = 0;
+  failSound.play();
+  gameOver.style.display = 'flex';
+  clearInterval(gameLoopInterval);
+  clearInterval(spawnIntervalId);
+}
+
+// Restart
+function restartGame() {
+  blocks.forEach(b => b.remove());
+  blocks = [];
+  score = 0;
+  gameSpeed = 2;
+  gameLoopInterval = setInterval(update,16);
+  spawnIntervalId = setInterval(createBlock, spawnInterval);
+  gameOver.style.display = 'none';
+  scoreEl.innerText = 'Pontuação: 0';
+}
+
+// Iniciar jogo
+function startGame() {
+  gameLoopInterval = setInterval(update,16);
+  spawnIntervalId = setInterval(createBlock, spawnInterval);
+}
+
+startGame();
+</script>
+
+</body>
+</html>
