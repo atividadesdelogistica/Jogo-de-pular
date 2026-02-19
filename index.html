@@ -3,209 +3,207 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Jogo de Pular Obstáculos</title>
+<title>Pixel Runner - Jogo em Código</title>
 <style>
-  html, body {
+  body {
     margin: 0;
-    padding: 0;
     overflow: hidden;
-    background-color: #222;
+    background-color: #6b5b95;
     font-family: Arial, sans-serif;
   }
-
-  #gameCanvas {
+  canvas {
     display: block;
-    background-color: #444;
     margin: 0 auto;
+    background-color: #87ceeb; /* Céu */
   }
-
   #menu {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    color: #fff;
-    text-align: center;
-  }
-
-  button {
-    padding: 12px 20px;
-    margin: 10px;
-    font-size: 18px;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: bold;
-    transition: background-color 0.3s;
-  }
-
-  #playBtn { background-color: #1f8ef1; color: #fff; }
-  #playBtn:hover { background-color: #0f6edb; }
-
-  #stopAudioBtn { background-color: #e74c3c; color: #fff; }
-  #stopAudioBtn:hover { background-color: #c0392b; }
-
-  #gameOverDiv {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    top:0; left:0;
+    width:100%; height:100%;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
     background-color: rgba(0,0,0,0.8);
-    display: none;
-    justify-content: center;
-    align-items: center;
-    flex-direction: column;
-    color: #fff;
-    z-index: 10;
+    z-index:10;
   }
-
-  #gameOverDiv img {
-    width: 200px;
-    margin-bottom: 20px;
+  #menu h1 {
+    color:#fff;
+    font-size:2em;
+    margin-bottom:20px;
+  }
+  #menu button {
+    padding:10px 20px;
+    margin:5px;
+    font-size:1em;
+    cursor:pointer;
+  }
+  #fase {
+    position:absolute;
+    top:10px; left:10px;
+    color:#fff;
+    font-weight:bold;
+    font-size:1.2em;
   }
 </style>
 </head>
 <body>
 
 <div id="menu">
-  <h1>Jogo de Pular Obstáculos</h1>
-  <button id="playBtn">Jogar</button>
-  <button id="stopAudioBtn">Parar Áudio</button>
+  <h1>Pixel Runner</h1>
+  <button id="startBtn">Jogar</button>
 </div>
+<div id="fase">Fase: 1</div>
+<audio id="audioGame" src="musica.mp3" loop></audio>
 
-<div id="gameOverDiv">
-  <img src="gameover.png" alt="Game Over">
-  <h2>Você perdeu!</h2>
-  <button id="retryBtn">Jogar de Novo</button>
-  <button id="exitBtn">Sair</button>
-</div>
-
-<canvas id="gameCanvas"></canvas>
-<audio id="gameAudio" src="musica.mp3"></audio>
+<canvas id="gameCanvas" width="800" height="400"></canvas>
 
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
 
-let player = {x: 100, y: canvas.height - 150, width: 50, height: 50, dy: 0};
-let gravity = 1;
+const audio = document.getElementById('audioGame');
+
+let gameRunning = false;
+let fase = 1;
+const totalFases = 20;
 let obstacles = [];
-let frame = 0;
-let level = 1;
-let playing = false;
-const totalLevels = 20;
-let gameAudio = document.getElementById('gameAudio');
+let gameSpeed = 3;
+let score = 0;
 
-// Imagens
-const playerImg = new Image();
-playerImg.src = 'player.png'; // coloque a imagem do personagem
-const obstacleImg = new Image();
-obstacleImg.src = 'obstacle.png'; // coloque a imagem do obstáculo
-
-// Botões
-const playBtn = document.getElementById('playBtn');
-const stopAudioBtn = document.getElementById('stopAudioBtn');
-const gameOverDiv = document.getElementById('gameOverDiv');
-const retryBtn = document.getElementById('retryBtn');
-const exitBtn = document.getElementById('exitBtn');
-const menuDiv = document.getElementById('menu');
-
-function resetGame() {
-  player.y = canvas.height - 150;
-  player.dy = 0;
-  obstacles = [];
-  frame = 0;
-  level = 1;
-}
-
-function startGame() {
-  resetGame();
-  menuDiv.style.display = 'none';
-  gameOverDiv.style.display = 'none';
-  playing = true;
-  setTimeout(() => { gameLoop(); }, 2500); // delay de 2,5s
-}
-
-function endGame() {
-  playing = false;
-  gameAudio.play();
-  gameOverDiv.style.display = 'flex';
-}
-
-function stopAudio() {
-  gameAudio.pause();
-  gameAudio.currentTime = 0;
-}
-
-// Eventos
-playBtn.onclick = startGame;
-stopAudioBtn.onclick = stopAudio;
-retryBtn.onclick = startGame;
-exitBtn.onclick = () => {
-  gameOverDiv.style.display = 'none';
-  menuDiv.style.display = 'block';
-  stopAudio();
+// Personagem
+const player = {
+  x:50,
+  y:300,
+  width:32,
+  height:32,
+  vy:0,
+  gravity:0.8,
+  jumpForce:-12,
+  onGround:false,
+  color:'#ffdd59'
 };
 
-// Pular
-function jump() {
-  if(player.y >= canvas.height - 150){
-    player.dy = -20;
+// Obstáculos
+class Obstacle{
+  constructor(x,y,width,height){
+    this.x = x;
+    this.y = y;
+    this.width = width;
+    this.height = height;
+  }
+  draw(){
+    ctx.fillStyle = '#ff4757';
+    ctx.fillRect(this.x, this.y, this.width, this.height);
   }
 }
 
-document.addEventListener('keydown', e => { if(e.code === 'Space') jump(); });
-canvas.addEventListener('touchstart', jump);
-canvas.addEventListener('mousedown', jump);
-
-// Obstáculos
-function createObstacle() {
-  let width = 50 + Math.random() * 50;
-  let x = canvas.width;
-  let height = 50 + Math.random() * 50;
-  obstacles.push({x, y: canvas.height - height, width, height});
+// Iniciar jogo
+function startGame(){
+  document.getElementById('menu').style.display = 'none';
+  gameRunning = true;
+  obstacles = [];
+  fase = 1;
+  score = 0;
+  gameSpeed = 3;
+  audio.currentTime = 0;
+  audio.play();
+  generateObstacles();
+  requestAnimationFrame(gameLoop);
 }
+
+// Gerar obstáculos
+function generateObstacles(){
+  obstacles = [];
+  let count = 5 + fase; // aumenta dificuldade por fase
+  for(let i=0;i<count;i++){
+    let obsHeight = Math.random() * 40 + 20;
+    let obsX = 400 + i*150 + Math.random()*100;
+    let obsY = canvas.height - obsHeight - 50;
+    let obsWidth = 20 + Math.random()*20;
+    obstacles.push(new Obstacle(obsX, obsY, obsWidth, obsHeight));
+  }
+}
+
+// Reiniciar jogo
+function resetGame(){
+  player.y = 300;
+  player.vy = 0;
+  player.onGround = false;
+  score = 0;
+  gameSpeed = 3;
+  fase = 1;
+  generateObstacles();
+  audio.pause();
+  audio.currentTime = 0;
+  document.getElementById('menu').style.display = 'flex';
+}
+
+// Controles
+document.addEventListener('keydown',(e)=>{
+  if(e.code === 'Space' || e.code === 'ArrowUp'){
+    if(player.onGround){
+      player.vy = player.jumpForce;
+      player.onGround = false;
+    }
+  }
+});
+
+document.getElementById('startBtn').addEventListener('click', startGame);
 
 // Loop do jogo
-function gameLoop() {
-  if(!playing) return;
+function gameLoop(){
+  if(!gameRunning) return;
+
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
+  // Fundo
+  ctx.fillStyle = '#87ceeb'; // Céu
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle = '#2ecc71'; // chão
+  ctx.fillRect(0,350,canvas.width,50);
+
   // Player
-  player.dy += gravity;
-  player.y += player.dy;
-  if(player.y > canvas.height - 150) player.y = canvas.height - 150;
-  ctx.drawImage(playerImg, player.x, player.y, player.width, player.height);
+  player.vy += player.gravity;
+  player.y += player.vy;
+  if(player.y + player.height > 350){
+    player.y = 350 - player.height;
+    player.vy = 0;
+    player.onGround = true;
+  }
+  ctx.fillStyle = player.color;
+  ctx.fillRect(player.x, player.y, player.width, player.height);
 
   // Obstáculos
-  frame++;
-  if(frame % 90 === 0) createObstacle();
-  obstacles.forEach((obs, i) => {
-    obs.x -= 10 + level;
-    ctx.drawImage(obstacleImg, obs.x, obs.y, obs.width, obs.height);
+  obstacles.forEach(obs=>{
+    obs.x -= gameSpeed;
+    obs.draw();
 
-    // Colisão
-    if(player.x < obs.x + obs.width && player.x + player.width > obs.x &&
-       player.y < obs.y + obs.height && player.y + player.height > obs.y){
-      endGame();
+    // colisão
+    if(player.x < obs.x + obs.width &&
+       player.x + player.width > obs.x &&
+       player.y < obs.y + obs.height &&
+       player.y + player.height > obs.y){
+         audio.pause(); // parar música
+         alert('Você bateu! Reinicie o jogo.');
+         resetGame();
     }
-
-    // Remover obstáculos
-    if(obs.x + obs.width < 0) obstacles.splice(i,1);
   });
 
-  // Score
-  ctx.fillStyle = '#fff';
-  ctx.font = '24px Arial';
-  ctx.fillText(`Fase: ${level}`, 20, 40);
-
-  // Passar de fase
-  if(frame % 900 === 0 && level < totalLevels){
-    level++;
+  // Pontuação e fase
+  score++;
+  if(score > 800){
+    if(fase < totalFases){
+      fase++;
+      gameSpeed += 0.5;
+      generateObstacles();
+      score = 0;
+    } else {
+      alert('Parabéns! Você completou todas as fases!');
+      resetGame();
+    }
   }
+  document.getElementById('fase').innerText = 'Fase: ' + fase;
 
   requestAnimationFrame(gameLoop);
 }
