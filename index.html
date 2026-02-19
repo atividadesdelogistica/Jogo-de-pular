@@ -3,166 +3,212 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Jogo de Saltos - 20 Fases</title>
+<title>Jogo de Pular Obstáculos</title>
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; font-family: Arial, sans-serif; }
-  body { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; background:#222; overflow:hidden; }
-  #menu, #game, #game-over { width:100%; max-width:900px; text-align:center; }
-  h1 { color:#fff; margin-bottom:20px; }
-  button { padding:10px 20px; margin:10px; font-weight:bold; border:none; border-radius:5px; cursor:pointer; transition:0.3s; }
-  button:hover { opacity:0.8; }
-  #game-container { position:relative; width:100%; height:500px; border-radius:10px; overflow:hidden; background: linear-gradient(to bottom, #4e54c8, #8f94fb); }
-  canvas { display:block; width:100%; height:100%; background:transparent; }
-  #game-over { color:#fff; display:none; position:relative; }
-  #game-over img { max-width:100%; border-radius:10px; margin-bottom:20px; }
-  .phase-btn { background:#ffcc00; color:#222; }
-  .phase-btn.locked { background:#555; color:#999; cursor:not-allowed; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-color: #222;
+    font-family: Arial, sans-serif;
+  }
+
+  #gameCanvas {
+    display: block;
+    background-color: #444;
+    margin: 0 auto;
+  }
+
+  #menu {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #fff;
+    text-align: center;
+  }
+
+  button {
+    padding: 12px 20px;
+    margin: 10px;
+    font-size: 18px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.3s;
+  }
+
+  #playBtn { background-color: #1f8ef1; color: #fff; }
+  #playBtn:hover { background-color: #0f6edb; }
+
+  #stopAudioBtn { background-color: #e74c3c; color: #fff; }
+  #stopAudioBtn:hover { background-color: #c0392b; }
+
+  #gameOverDiv {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.8);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    color: #fff;
+    z-index: 10;
+  }
+
+  #gameOverDiv img {
+    width: 200px;
+    margin-bottom: 20px;
+  }
 </style>
 </head>
 <body>
 
 <div id="menu">
-  <h1>Jogo de Saltos</h1>
-  <button onclick="startGame(1)">Jogar</button>
-  <div id="phase-menu"></div>
+  <h1>Jogo de Pular Obstáculos</h1>
+  <button id="playBtn">Jogar</button>
+  <button id="stopAudioBtn">Parar Áudio</button>
 </div>
 
-<div id="game" style="display:none;">
-  <div id="game-container">
-    <canvas id="gameCanvas"></canvas>
-  </div>
-  <button onclick="stopGame()">Sair</button>
-</div>
-
-<div id="game-over">
+<div id="gameOverDiv">
   <img src="gameover.png" alt="Game Over">
-  <h1>Você errou!</h1>
-  <button onclick="restartGame()">Jogar de novo</button>
-  <button onclick="exitToMenu()">Menu</button>
+  <h2>Você perdeu!</h2>
+  <button id="retryBtn">Jogar de Novo</button>
+  <button id="exitBtn">Sair</button>
 </div>
 
-<audio id="fail-audio" src="musica.mp3"></audio>
+<canvas id="gameCanvas"></canvas>
+<audio id="gameAudio" src="musica.mp3"></audio>
 
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-let cw, ch;
-function resizeCanvas() {
-  cw = canvas.width = canvas.clientWidth;
-  ch = canvas.height = canvas.clientHeight;
-}
-window.addEventListener('resize', resizeCanvas);
-resizeCanvas();
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 
-// Variáveis do jogo
-let player = {x:50, y:0, w:30, h:30, vy:0, jump:-14, color:'#ff3'};
+let player = {x: 100, y: canvas.height - 150, width: 50, height: 50, dy: 0};
+let gravity = 1;
 let obstacles = [];
-let currentPhase = 1;
-let maxPhase = 1;
-let gameLoopId;
-let failAudio = document.getElementById('fail-audio');
-let gameActive = false;
-let speed = 5;
+let frame = 0;
+let level = 1;
+let playing = false;
+const totalLevels = 20;
+let gameAudio = document.getElementById('gameAudio');
 
-// Criar menu fases
-const phaseMenu = document.getElementById('phase-menu');
-function updatePhaseMenu(){
-  phaseMenu.innerHTML = '';
-  for(let i=1;i<=20;i++){
-    let btn = document.createElement('button');
-    btn.textContent = 'Fase '+i;
-    btn.className = 'phase-btn';
-    if(i>maxPhase) btn.classList.add('locked');
-    else btn.onclick = ()=>startGame(i);
-    phaseMenu.appendChild(btn);
-  }
-}
-updatePhaseMenu();
+// Imagens
+const playerImg = new Image();
+playerImg.src = 'player.png'; // coloque a imagem do personagem
+const obstacleImg = new Image();
+obstacleImg.src = 'obstacle.png'; // coloque a imagem do obstáculo
 
-// Funções do jogo
-function startGame(phase){
-  currentPhase = phase;
-  document.getElementById('menu').style.display='none';
-  document.getElementById('game').style.display='block';
-  document.getElementById('game-over').style.display='none';
-  resetGame();
-  setTimeout(()=>{ gameActive = true; gameLoop(); }, 2500); // delay de 2,5s
-  failAudio.pause();
-  failAudio.currentTime = 0;
-}
+// Botões
+const playBtn = document.getElementById('playBtn');
+const stopAudioBtn = document.getElementById('stopAudioBtn');
+const gameOverDiv = document.getElementById('gameOverDiv');
+const retryBtn = document.getElementById('retryBtn');
+const exitBtn = document.getElementById('exitBtn');
+const menuDiv = document.getElementById('menu');
 
-function resetGame(){
-  player.y = ch - 60; player.vy = 0;
+function resetGame() {
+  player.y = canvas.height - 150;
+  player.dy = 0;
   obstacles = [];
-  for(let i=0;i<6+currentPhase;i++){
-    let w = 30+Math.random()*30;
-    let h = 20+Math.random()*40;
-    let x = cw + i*200 + Math.random()*100;
-    let y = ch - h - Math.random()*50;
-    obstacles.push({x,y,w,h});
+  frame = 0;
+  level = 1;
+}
+
+function startGame() {
+  resetGame();
+  menuDiv.style.display = 'none';
+  gameOverDiv.style.display = 'none';
+  playing = true;
+  setTimeout(() => { gameLoop(); }, 2500); // delay de 2,5s
+}
+
+function endGame() {
+  playing = false;
+  gameAudio.play();
+  gameOverDiv.style.display = 'flex';
+}
+
+function stopAudio() {
+  gameAudio.pause();
+  gameAudio.currentTime = 0;
+}
+
+// Eventos
+playBtn.onclick = startGame;
+stopAudioBtn.onclick = stopAudio;
+retryBtn.onclick = startGame;
+exitBtn.onclick = () => {
+  gameOverDiv.style.display = 'none';
+  menuDiv.style.display = 'block';
+  stopAudio();
+};
+
+// Pular
+function jump() {
+  if(player.y >= canvas.height - 150){
+    player.dy = -20;
   }
 }
 
-// Loop principal
-function gameLoop(){
-  if(!gameActive) return;
-  ctx.clearRect(0,0,cw,ch);
-  // chão
-  ctx.fillStyle='#333';
-  ctx.fillRect(0,ch-20,cw,20);
-  // player
-  ctx.fillStyle=player.color;
-  ctx.fillRect(player.x, player.y, player.w, player.h);
-  // gravidade
-  player.vy += 0.8;
-  player.y += player.vy;
-  if(player.y + player.h > ch-20){ player.y = ch-20 - player.h; player.vy=0; }
-  // obstáculos
-  ctx.fillStyle='#f33';
-  for(let obs of obstacles){
-    obs.x -= speed;
-    ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
-    // colisão
-    if(player.x < obs.x+obs.w && player.x+player.w>obs.x && player.y<obs.y+obs.h && player.y+player.h>obs.y){
-      gameOver();
-      return;
-    }
-  }
-  // ganhar fase
-  if(obstacles[obstacles.length-1].x + obstacles[obstacles.length-1].w < 0){
-    nextPhase();
-    return;
-  }
-  gameLoopId = requestAnimationFrame(gameLoop);
-}
-
-// pular
-function jump(){ if(player.y + player.h >= ch-20) player.vy = player.jump; }
+document.addEventListener('keydown', e => { if(e.code === 'Space') jump(); });
+canvas.addEventListener('touchstart', jump);
 canvas.addEventListener('mousedown', jump);
-canvas.addEventListener('touchstart', (e)=>{ e.preventDefault(); jump(); });
 
-// próximo fase
-function nextPhase(){
-  gameActive=false;
-  cancelAnimationFrame(gameLoopId);
-  if(currentPhase<20) maxPhase = Math.max(maxPhase, currentPhase+1);
-  startGame(currentPhase+1 <=20?currentPhase+1:20);
+// Obstáculos
+function createObstacle() {
+  let width = 50 + Math.random() * 50;
+  let x = canvas.width;
+  let height = 50 + Math.random() * 50;
+  obstacles.push({x, y: canvas.height - height, width, height});
 }
 
-// game over
-function gameOver(){
-  gameActive=false;
-  failAudio.play();
-  cancelAnimationFrame(gameLoopId);
-  document.getElementById('game-over').style.display='block';
+// Loop do jogo
+function gameLoop() {
+  if(!playing) return;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // Player
+  player.dy += gravity;
+  player.y += player.dy;
+  if(player.y > canvas.height - 150) player.y = canvas.height - 150;
+  ctx.drawImage(playerImg, player.x, player.y, player.width, player.height);
+
+  // Obstáculos
+  frame++;
+  if(frame % 90 === 0) createObstacle();
+  obstacles.forEach((obs, i) => {
+    obs.x -= 10 + level;
+    ctx.drawImage(obstacleImg, obs.x, obs.y, obs.width, obs.height);
+
+    // Colisão
+    if(player.x < obs.x + obs.width && player.x + player.width > obs.x &&
+       player.y < obs.y + obs.height && player.y + player.height > obs.y){
+      endGame();
+    }
+
+    // Remover obstáculos
+    if(obs.x + obs.width < 0) obstacles.splice(i,1);
+  });
+
+  // Score
+  ctx.fillStyle = '#fff';
+  ctx.font = '24px Arial';
+  ctx.fillText(`Fase: ${level}`, 20, 40);
+
+  // Passar de fase
+  if(frame % 900 === 0 && level < totalLevels){
+    level++;
+  }
+
+  requestAnimationFrame(gameLoop);
 }
-
-// restart
-function restartGame(){ startGame(currentPhase); }
-
-// sair
-function stopGame(){ gameActive=false; failAudio.pause(); failAudio.currentTime=0; document.getElementById('menu').style.display='block'; document.getElementById('game').style.display='none'; }
-function exitToMenu(){ gameActive=false; failAudio.pause(); failAudio.currentTime=0; document.getElementById('menu').style.display='block'; document.getElementById('game').style.display='none'; document.getElementById('game-over').style.display='none'; updatePhaseMenu(); }
 </script>
 </body>
 </html>
