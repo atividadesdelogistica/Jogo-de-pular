@@ -3,271 +3,247 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pixel Runner Avançado</title>
+<title>Pixel Runner Game</title>
 <style>
-body {
-  margin:0;
-  overflow:hidden;
-  background-color:#87ceeb;
-  font-family:Arial, sans-serif;
-}
-canvas {
-  display:block;
-  margin:0 auto;
-  background-color:#87ceeb;
-}
-#menu {
-  position:absolute;
-  top:0; left:0;
-  width:100%; height:100%;
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
-  align-items:center;
-  background-color: rgba(0,0,0,0.8);
-  z-index:10;
-}
-#menu h1 {
-  color:#fff;
-  font-size:2em;
-  margin-bottom:20px;
-}
-#menu button {
-  padding:10px 20px;
-  margin:5px;
-  font-size:1em;
-  cursor:pointer;
-}
-#fase {
-  position:absolute;
-  top:10px; left:10px;
-  color:#fff;
-  font-weight:bold;
-  font-size:1.2em;
-}
-#gameOverImg {
-  position:absolute;
-  top:50%;
-  left:50%;
-  transform: translate(-50%,-50%);
-  display:none;
-  z-index:20;
-  width:300px;
-}
-#touchControls {
-  position:absolute;
-  bottom:20px;
-  left:50%;
-  transform: translateX(-50%);
-  display:flex;
-  gap:20px;
-  z-index:15;
-  display:none;
-}
-#touchControls button {
-  padding:20px;
-  font-size:1.5em;
-  border-radius:10px;
-  opacity:0.7;
-}
+  body, html {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+    background-color: #222;
+  }
+  canvas {
+    display: block;
+    margin: 0 auto;
+    background-color: #111;
+  }
+  #menu, #gameOver {
+    position: absolute;
+    top:0; left:0;
+    width:100%; height:100%;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    background: rgba(0,0,0,0.8);
+    color: #fff;
+    font-size: 24px;
+    z-index: 10;
+  }
+  button {
+    padding: 10px 20px;
+    margin: 10px;
+    font-size: 18px;
+    cursor: pointer;
+    border:none;
+    border-radius:5px;
+    background-color: #1f8ef1;
+    color:white;
+  }
+  #touchControls {
+    position:absolute;
+    bottom:10px;
+    width:100%;
+    display:flex;
+    justify-content: space-between;
+    padding: 0 20px;
+    pointer-events: auto;
+  }
+  .arrow {
+    width:60px;
+    height:60px;
+    background: rgba(255,255,255,0.3);
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    font-size:30px;
+    border-radius:10px;
+    user-select:none;
+  }
 </style>
 </head>
 <body>
 
 <div id="menu">
   <h1>Pixel Runner</h1>
-  <button id="startBtn">Jogar</button>
+  <p>Escolha uma fase</p>
+  <div id="faseButtons"></div>
 </div>
-
-<div id="fase">Fase: 1</div>
-<img id="gameOverImg" src="gameover.png" alt="Game Over">
-
-<audio id="audioHit" src="musica.mp3"></audio>
 
 <canvas id="gameCanvas" width="800" height="400"></canvas>
 
-<!-- Controles Touch -->
-<div id="touchControls">
-  <button id="jumpBtn">↑</button>
-  <button id="rightBtn">→</button>
+<div id="gameOver" style="display:none;">
+  <h1>Game Over</h1>
+  <img id="gameOverImg" src="" alt="Game Over" style="width:150px;height:150px;margin:20px;">
+  <button onclick="restartGame()">Jogar de novo</button>
 </div>
+
+<div id="touchControls">
+  <div class="arrow" id="leftArrow">&#8592;</div>
+  <div class="arrow" id="upArrow">&#8593;</div>
+  <div class="arrow" id="rightArrow">&#8594;</div>
+</div>
+
+<audio id="deathSound" src="musica.mp3"></audio>
 
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const audioHit = document.getElementById('audioHit');
-const gameOverImg = document.getElementById('gameOverImg');
-const touchControls = document.getElementById('touchControls');
 
-let gameRunning = false;
-let fase = 1;
-const totalFases = 20;
+let gameState = 'menu'; // 'menu', 'playing', 'gameOver'
+let currentPhase = 1;
+let maxPhase = 20;
+let phasesUnlocked = 1;
 let obstacles = [];
-let gameSpeed = 3;
+let player = {x:50, y:350, width:30, height:30, dy:0, onGround:true};
+let gravity = 1.2;
+let speed = 4;
 let score = 0;
 
-// Personagem
-const player = {
-  x:50,
-  y:300,
-  width:32,
-  height:32,
-  vy:0,
-  gravity:0.8,
-  jumpForce:-12,
-  onGround:true,
-  color:'#ffdd59',
-  runFrame:0,
-  speed:3
-};
-
-// Obstáculos
-class Obstacle{
-  constructor(x,y,width,height){
-    this.x = x;
-    this.y = y;
-    this.width = width;
-    this.height = height;
+// Menu dinamico
+const faseButtons = document.getElementById('faseButtons');
+function updateMenu() {
+  faseButtons.innerHTML = '';
+  for(let i=1;i<=maxPhase;i++){
+    const btn = document.createElement('button');
+    btn.textContent = `Fase ${i}`;
+    btn.disabled = i>phasesUnlocked;
+    btn.onclick = () => startPhase(i);
+    faseButtons.appendChild(btn);
   }
-  draw(){
-    ctx.fillStyle = '#ff4757';
-    ctx.fillRect(this.x, this.y, this.width, this.height);
+}
+updateMenu();
+
+// Obstacle generator
+function generateObstacles(phase){
+  obstacles = [];
+  let obsCount = phase + 2;
+  for(let i=0;i<obsCount;i++){
+    let obsX = 400 + i*200 + Math.random()*200;
+    let obsHeight = 20 + Math.random()*60;
+    obstacles.push({x:obsX, y:canvas.height-obsHeight, width:30, height:obsHeight});
   }
 }
 
-// Menu
-function startGame(){
-  document.getElementById('menu').style.display='none';
-  gameOverImg.style.display='none';
-  gameRunning = true;
-  fase = 1;
-  score = 0;
-  gameSpeed = 3;
-  player.y = 300;
-  player.vy = 0;
-  player.x = 50;
-  generateObstacles();
-
-  // Detecta se é dispositivo touch
-  if('ontouchstart' in window){
-    touchControls.style.display='flex';
-  } else {
-    touchControls.style.display='none';
-  }
-
-  requestAnimationFrame(gameLoop);
-}
-
-// Reiniciar
-function resetGame(){
-  gameRunning=false;
-  gameOverImg.style.display='block';
-  audioHit.currentTime=0;
-  audioHit.play();
-  setTimeout(()=>{
-    document.getElementById('menu').style.display='flex';
-  },2500); // retorna ao menu depois de 2,5s
-}
-
-// Gerar obstáculos
-function generateObstacles(){
-  obstacles=[];
-  let count=5+fase;
-  for(let i=0;i<count;i++){
-    let obsHeight = Math.random()*40+20;
-    let obsWidth = 20+Math.random()*20;
-    let obsX = 400 + i*150 + Math.random()*100;
-    let obsY = 350 - obsHeight;
-    obstacles.push(new Obstacle(obsX, obsY, obsWidth, obsHeight));
-  }
-}
-
-// Controles teclado
-document.addEventListener('keydown',(e)=>{
-  if(!gameRunning) return;
-  if(e.code==='Space'||e.code==='ArrowUp'){
-    if(player.onGround){
-      player.vy=player.jumpForce;
-      player.onGround=false;
-    }
-  }
-});
-
-// Controles touch
-document.getElementById('jumpBtn').addEventListener('touchstart',(e)=>{
-  e.preventDefault();
-  if(player.onGround){
-    player.vy=player.jumpForce;
-    player.onGround=false;
-  }
-});
-document.getElementById('rightBtn').addEventListener('touchstart',(e)=>{
-  e.preventDefault();
-  player.x += player.speed;
-  if(player.x+player.width>canvas.width) player.x=canvas.width-player.width;
-});
-
-// Loop do jogo
+// Game loop
+let keys = {left:false,right:false,up:false};
 function gameLoop(){
-  if(!gameRunning) return;
-
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // Fundo
-  ctx.fillStyle='#87ceeb'; // céu
-  ctx.fillRect(0,0,canvas.width,canvas.height);
-  ctx.fillStyle='#2ecc71'; // chão
-  ctx.fillRect(0,350,canvas.width,50);
+  // Player movement
+  if(keys.left) player.x -= speed;
+  if(keys.right) player.x += speed;
+  if(keys.up && player.onGround){ player.dy = -15; player.onGround=false; }
 
-  // Player
-  player.vy += player.gravity;
-  player.y += player.vy;
-  if(player.y+player.height>350){
-    player.y = 350 - player.height;
-    player.vy = 0;
+  player.dy += gravity;
+  player.y += player.dy;
+  if(player.y + player.height > canvas.height){
+    player.y = canvas.height - player.height;
+    player.dy = 0;
     player.onGround = true;
   }
 
-  // Animação corrida (muda cor levemente)
-  player.runFrame += 0.2;
-  const runColor = player.runFrame % 2 <1 ? '#ffdd59':'#ffd633';
-  ctx.fillStyle = runColor;
+  // Draw player
+  ctx.fillStyle = 'cyan';
   ctx.fillRect(player.x, player.y, player.width, player.height);
 
-  // Obstáculos
-  obstacles.forEach(obs=>{
-    obs.x -= gameSpeed;
-    obs.draw();
-
-    // colisão
-    if(player.x < obs.x + obs.width &&
-       player.x + player.width > obs.x &&
-       player.y < obs.y + obs.height &&
-       player.y + player.height > obs.y){
-        resetGame();
-    }
+  // Move obstacles
+  obstacles.forEach(o=>{
+    o.x -= speed;
+    ctx.fillStyle = 'red';
+    ctx.fillRect(o.x, o.y, o.width, o.height);
   });
 
-  // Pontuação e fase
-  score++;
-  if(score>800){
-    if(fase<totalFases){
-      fase++;
-      gameSpeed+=0.5;
-      generateObstacles();
-      score=0;
-    } else {
-      alert('Parabéns! Você completou todas as fases!');
-      resetGame();
+  // Collision
+  for(let o of obstacles){
+    if(player.x < o.x+o.width && player.x+player.width > o.x &&
+       player.y < o.y+o.height && player.y+player.height > o.y){
+         triggerGameOver();
+         return;
+       }
+  }
+
+  // Next phase
+  if(obstacles.every(o=>o.x+o.width<0)){
+    if(currentPhase<maxPhase){
+      alert('Fase concluída!');
+      currentPhase++;
+      if(currentPhase>phasesUnlocked) phasesUnlocked=currentPhase;
+      startPhase(currentPhase);
+    }else{
+      alert('Você completou todas as fases!');
+      showMenu();
     }
   }
-  document.getElementById('fase').innerText = 'Fase: '+fase;
 
-  requestAnimationFrame(gameLoop);
+  if(gameState==='playing') requestAnimationFrame(gameLoop);
 }
 
-document.getElementById('startBtn').addEventListener('click',startGame);
-</script>
+// Start Phase
+function startPhase(phase){
+  gameState='playing';
+  currentPhase=phase;
+  player.x=50;
+  player.y=350;
+  player.dy=0;
+  player.onGround=true;
+  generateObstacles(phase);
+  document.getElementById('menu').style.display='none';
+  document.getElementById('gameOver').style.display='none';
+  window.scrollTo(0,0);
+  setTimeout(()=>{gameLoop();}, 250); // pequeno delay
+}
 
+// Show Menu
+function showMenu(){
+  gameState='menu';
+  document.getElementById('menu').style.display='flex';
+}
+
+// Game Over
+function triggerGameOver(){
+  gameState='gameOver';
+  document.getElementById('gameOverImg').src='https://i.imgur.com/3VZ2sZn.png';
+  const deathSound = document.getElementById('deathSound');
+  deathSound.currentTime = 0;
+  deathSound.play();
+  setTimeout(()=>{
+    document.getElementById('gameOver').style.display='flex';
+  },2000);
+}
+
+// Restart
+function restartGame(){
+  document.getElementById('gameOver').style.display='none';
+  startPhase(currentPhase);
+}
+
+// Keyboard
+document.addEventListener('keydown', e=>{
+  if(e.key==='ArrowLeft') keys.left=true;
+  if(e.key==='ArrowRight') keys.right=true;
+  if(e.key==='ArrowUp') keys.up=true;
+});
+document.addEventListener('keyup', e=>{
+  if(e.key==='ArrowLeft') keys.left=false;
+  if(e.key==='ArrowRight') keys.right=false;
+  if(e.key==='ArrowUp') keys.up=false;
+});
+
+// Touch Controls
+const leftArrow = document.getElementById('leftArrow');
+const rightArrow = document.getElementById('rightArrow');
+const upArrow = document.getElementById('upArrow');
+
+function setupTouch(arrow, dir){
+  arrow.addEventListener('touchstart', e=>{ keys[dir]=true; e.preventDefault(); });
+  arrow.addEventListener('touchend', e=>{ keys[dir]=false; e.preventDefault(); });
+}
+
+setupTouch(leftArrow,'left');
+setupTouch(rightArrow,'right');
+setupTouch(upArrow,'up');
+
+</script>
 </body>
 </html>
