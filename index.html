@@ -3,48 +3,57 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pixel Runner - Jogo em Código</title>
+<title>Pixel Runner Avançado</title>
 <style>
-  body {
-    margin: 0;
-    overflow: hidden;
-    background-color: #6b5b95;
-    font-family: Arial, sans-serif;
-  }
-  canvas {
-    display: block;
-    margin: 0 auto;
-    background-color: #87ceeb; /* Céu */
-  }
-  #menu {
-    position: absolute;
-    top:0; left:0;
-    width:100%; height:100%;
-    display:flex;
-    flex-direction:column;
-    justify-content:center;
-    align-items:center;
-    background-color: rgba(0,0,0,0.8);
-    z-index:10;
-  }
-  #menu h1 {
-    color:#fff;
-    font-size:2em;
-    margin-bottom:20px;
-  }
-  #menu button {
-    padding:10px 20px;
-    margin:5px;
-    font-size:1em;
-    cursor:pointer;
-  }
-  #fase {
-    position:absolute;
-    top:10px; left:10px;
-    color:#fff;
-    font-weight:bold;
-    font-size:1.2em;
-  }
+body {
+  margin:0;
+  overflow:hidden;
+  background-color:#87ceeb;
+  font-family:Arial, sans-serif;
+}
+canvas {
+  display:block;
+  margin:0 auto;
+  background-color:#87ceeb;
+}
+#menu {
+  position:absolute;
+  top:0; left:0;
+  width:100%; height:100%;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  background-color: rgba(0,0,0,0.8);
+  z-index:10;
+}
+#menu h1 {
+  color:#fff;
+  font-size:2em;
+  margin-bottom:20px;
+}
+#menu button {
+  padding:10px 20px;
+  margin:5px;
+  font-size:1em;
+  cursor:pointer;
+}
+#fase {
+  position:absolute;
+  top:10px; left:10px;
+  color:#fff;
+  font-weight:bold;
+  font-size:1.2em;
+}
+#gameOverImg {
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform: translate(-50%,-50%);
+  display:none;
+  z-index:20;
+  width:300px;
+}
 </style>
 </head>
 <body>
@@ -53,16 +62,19 @@
   <h1>Pixel Runner</h1>
   <button id="startBtn">Jogar</button>
 </div>
+
 <div id="fase">Fase: 1</div>
-<audio id="audioGame" src="musica.mp3" loop></audio>
+<img id="gameOverImg" src="gameover.png" alt="Game Over">
+
+<audio id="audioHit" src="musica.mp3"></audio>
 
 <canvas id="gameCanvas" width="800" height="400"></canvas>
 
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-
-const audio = document.getElementById('audioGame');
+const audioHit = document.getElementById('audioHit');
+const gameOverImg = document.getElementById('gameOverImg');
 
 let gameRunning = false;
 let fase = 1;
@@ -80,8 +92,9 @@ const player = {
   vy:0,
   gravity:0.8,
   jumpForce:-12,
-  onGround:false,
-  color:'#ffdd59'
+  onGround:true,
+  color:'#ffdd59',
+  runFrame:0
 };
 
 // Obstáculos
@@ -98,58 +111,53 @@ class Obstacle{
   }
 }
 
-// Iniciar jogo
+// Menu
 function startGame(){
-  document.getElementById('menu').style.display = 'none';
+  document.getElementById('menu').style.display='none';
+  gameOverImg.style.display='none';
   gameRunning = true;
-  obstacles = [];
   fase = 1;
   score = 0;
   gameSpeed = 3;
-  audio.currentTime = 0;
-  audio.play();
+  player.y = 300;
+  player.vy = 0;
   generateObstacles();
   requestAnimationFrame(gameLoop);
 }
 
+// Reiniciar
+function resetGame(){
+  gameRunning=false;
+  gameOverImg.style.display='block';
+  audioHit.currentTime=0;
+  audioHit.play();
+  setTimeout(()=>{
+    document.getElementById('menu').style.display='flex';
+  },2500); // retorna ao menu depois de 2,5s
+}
+
 // Gerar obstáculos
 function generateObstacles(){
-  obstacles = [];
-  let count = 5 + fase; // aumenta dificuldade por fase
+  obstacles=[];
+  let count=5+fase;
   for(let i=0;i<count;i++){
-    let obsHeight = Math.random() * 40 + 20;
+    let obsHeight = Math.random()*40+20;
+    let obsWidth = 20+Math.random()*20;
     let obsX = 400 + i*150 + Math.random()*100;
-    let obsY = canvas.height - obsHeight - 50;
-    let obsWidth = 20 + Math.random()*20;
+    let obsY = 350 - obsHeight;
     obstacles.push(new Obstacle(obsX, obsY, obsWidth, obsHeight));
   }
 }
 
-// Reiniciar jogo
-function resetGame(){
-  player.y = 300;
-  player.vy = 0;
-  player.onGround = false;
-  score = 0;
-  gameSpeed = 3;
-  fase = 1;
-  generateObstacles();
-  audio.pause();
-  audio.currentTime = 0;
-  document.getElementById('menu').style.display = 'flex';
-}
-
 // Controles
 document.addEventListener('keydown',(e)=>{
-  if(e.code === 'Space' || e.code === 'ArrowUp'){
+  if(e.code==='Space'||e.code==='ArrowUp'){
     if(player.onGround){
-      player.vy = player.jumpForce;
-      player.onGround = false;
+      player.vy=player.jumpForce;
+      player.onGround=false;
     }
   }
 });
-
-document.getElementById('startBtn').addEventListener('click', startGame);
 
 // Loop do jogo
 function gameLoop(){
@@ -158,20 +166,24 @@ function gameLoop(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
   // Fundo
-  ctx.fillStyle = '#87ceeb'; // Céu
+  ctx.fillStyle='#87ceeb'; // céu
   ctx.fillRect(0,0,canvas.width,canvas.height);
-  ctx.fillStyle = '#2ecc71'; // chão
+  ctx.fillStyle='#2ecc71'; // chão
   ctx.fillRect(0,350,canvas.width,50);
 
   // Player
   player.vy += player.gravity;
   player.y += player.vy;
-  if(player.y + player.height > 350){
+  if(player.y+player.height>350){
     player.y = 350 - player.height;
     player.vy = 0;
     player.onGround = true;
   }
-  ctx.fillStyle = player.color;
+
+  // Animação corrida (muda cor levemente)
+  player.runFrame += 0.2;
+  const runColor = player.runFrame % 2 <1 ? '#ffdd59':'#ffd633';
+  ctx.fillStyle = runColor;
   ctx.fillRect(player.x, player.y, player.width, player.height);
 
   // Obstáculos
@@ -184,29 +196,30 @@ function gameLoop(){
        player.x + player.width > obs.x &&
        player.y < obs.y + obs.height &&
        player.y + player.height > obs.y){
-         audio.pause(); // parar música
-         alert('Você bateu! Reinicie o jogo.');
-         resetGame();
+        resetGame();
     }
   });
 
   // Pontuação e fase
   score++;
-  if(score > 800){
-    if(fase < totalFases){
+  if(score>800){
+    if(fase<totalFases){
       fase++;
-      gameSpeed += 0.5;
+      gameSpeed+=0.5;
       generateObstacles();
-      score = 0;
+      score=0;
     } else {
       alert('Parabéns! Você completou todas as fases!');
       resetGame();
     }
   }
-  document.getElementById('fase').innerText = 'Fase: ' + fase;
+  document.getElementById('fase').innerText = 'Fase: '+fase;
 
   requestAnimationFrame(gameLoop);
 }
+
+document.getElementById('startBtn').addEventListener('click',startGame);
 </script>
+
 </body>
 </html>
