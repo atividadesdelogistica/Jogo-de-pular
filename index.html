@@ -1,37 +1,196 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Jogo</title>
-<link rel="stylesheet" href="style.css">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<style>
+*{
+margin:0;
+padding:0;
+overflow:hidden;
+-webkit-user-select:none;
+user-select:none;
+touch-action:none;
+}
+
+body{
+background:#111;
+}
+
+canvas{
+background:#222;
+display:block;
+}
+
+#controles{
+position:fixed;
+bottom:10px;
+width:100%;
+display:flex;
+justify-content:space-between;
+z-index:10;
+}
+
+button{
+width:45%;
+height:60px;
+font-size:30px;
+border:none;
+background:#555;
+color:#fff;
+}
+
+#pause{
+position:fixed;
+top:10px;
+right:10px;
+width:60px;
+height:60px;
+background:url("morte.png");
+background-size:cover;
+}
+</style>
 </head>
+<body>
 
-<body oncontextmenu="return false">
+<canvas id="game"></canvas>
 
-<div id="game">
-    <div id="player"></div>
-    <div id="obstacle"></div>
+<div id="controles">
+<button id="andar">➡️</button>
+<button id="pular">⬆️</button>
 </div>
 
-<h2>Pontos: <span id="score">0</span></h2>
-<h3>Recorde: <span id="highscore">0</span></h3>
+<button id="pause"></button>
 
-<div id="controls">
-    <button id="left">←</button>
-    <button id="jump">↑</button>
-    <button id="right">→</button>
-</div>
+<script>
+document.addEventListener("contextmenu", e=>e.preventDefault());
 
-<button id="pause">⏸️</button>
+let canvas=document.getElementById("game");
+let ctx=canvas.getContext("2d");
 
-<div id="deathScreen">
-    <img src="morte.png">
-    <button id="restart">Jogar Novamente</button>
-</div>
+function resize(){
+canvas.width=window.innerWidth;
+canvas.height=window.innerHeight;
+}
+resize();
+window.onresize=resize;
 
-<audio id="deathMusic" src="musica.mp3"></audio>
+let player={x:100,y:0,w:50,h:50,vy:0,jump:false}
+let obst=[];
+let score=0;
+let nivel=1;
+let record=localStorage.getItem("record")||0;
+let morto=false;
+let pausado=false;
 
-<script src="script.js"></script>
+let musica=new Audio("musica.mp3");
+
+function spawn(){
+if(!morto&&!pausado){
+obst.push({x:canvas.width,y:canvas.height-50,w:50,h:50});
+}
+}
+setInterval(spawn,1500);
+
+function draw(){
+ctx.clearRect(0,0,canvas.width,canvas.height);
+
+ctx.fillStyle="white";
+ctx.fillRect(player.x,player.y,player.w,player.h);
+
+ctx.fillStyle="red";
+
+for(let i=0;i<obst.length;i++){
+let o=obst[i];
+ctx.fillRect(o.x,o.y,o.w,o.h);
+o.x-=5+nivel;
+
+if(o.x+o.w<0){
+obst.splice(i,1);
+score++;
+if(score%5==0){
+nivel++;
+}
+}
+
+if(player.x<o.x+o.w &&
+player.x+player.w>o.x &&
+player.y<o.y+o.h &&
+player.y+player.h>o.y){
+morrer();
+}
+}
+
+ctx.fillStyle="white";
+ctx.font="20px Arial";
+ctx.fillText("Pontos: "+score,20,30);
+ctx.fillText("Recorde: "+record,20,60);
+}
+
+function update(){
+if(morto||pausado)return;
+
+player.y+=player.vy;
+player.vy+=1;
+
+if(player.y+player.h>=canvas.height){
+player.y=canvas.height-player.h;
+player.jump=false;
+}
+
+draw();
+requestAnimationFrame(update);
+}
+update();
+
+function pular(){
+if(!player.jump){
+player.vy=-20;
+player.jump=true;
+}
+}
+
+document.getElementById("pular").ontouchstart=pular;
+
+document.getElementById("andar").ontouchstart=()=>{
+player.x+=30;
+if(player.x+player.w>canvas.width){
+player.x=canvas.width-player.w;
+}
+}
+
+function morrer(){
+if(!morto){
+morto=true;
+musica.currentTime=0;
+musica.play();
+
+let img=new Image();
+img.src="morte.png";
+img.onload=function(){
+ctx.drawImage(img,
+canvas.width/2-100,
+canvas.height/2-100,
+200,200);
+}
+
+if(score>record){
+record=score;
+localStorage.setItem("record",record);
+}
+
+setTimeout(()=>{
+musica.pause();
+location.reload();
+},3000);
+}
+}
+
+document.getElementById("pause").onclick=()=>{
+pausado=!pausado;
+if(!pausado){
+update();
+}
+}
+</script>
 </body>
 </html>
