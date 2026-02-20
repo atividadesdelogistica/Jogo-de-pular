@@ -7,51 +7,56 @@
 *{
 margin:0;
 padding:0;
-box-sizing:border-box;
 user-select:none;
 -webkit-user-select:none;
 -webkit-touch-callout:none;
 }
 
 body{
-background:black;
 overflow:hidden;
+background:black;
 touch-action:none;
 }
 
 canvas{
-background:#1a1a1a;
+background:#111;
 display:block;
 }
 
+#controles{
+position:fixed;
+bottom:20px;
+width:100%;
+display:flex;
+justify-content:space-between;
+padding:0 20px;
+z-index:10;
+}
+
 .btn{
-position:absolute;
-bottom:30px;
-width:70px;
-height:70px;
-background:#444;
+width:80px;
+height:80px;
+background:rgba(255,255,255,0.2);
 color:white;
 font-size:30px;
 border-radius:50%;
 display:flex;
 align-items:center;
 justify-content:center;
-z-index:5;
 }
 
-#andar{left:20px;}
-#pular{right:20px;}
-
 #pause{
-position:absolute;
-top:10px;
-right:10px;
+position:fixed;
+top:20px;
+right:20px;
+background:red;
+color:white;
 padding:10px;
 z-index:10;
 }
 
 #morteTela{
-position:absolute;
+position:fixed;
 top:0;
 left:0;
 width:100%;
@@ -64,186 +69,198 @@ justify-content:center;
 z-index:20;
 }
 
+#morteTela img{
+width:200px;
+}
+
 #voltar{
 margin-top:20px;
-padding:10px;
+padding:15px 25px;
+font-size:20px;
 display:none;
 }
 
 </style>
 </head>
-
 <body>
 
-<canvas id="game"></canvas>
-
-<div id="andar" class="btn">➡️</div>
-<div id="pular" class="btn">⬆️</div>
-<button id="pause">⏸️</button>
+<button id="pause">⏸</button>
 
 <div id="morteTela">
-<img src="morte.png" width="200">
-<h2 style="color:white">VOCÊ MORREU</h2>
+<img src="morte.png">
 <button id="voltar">Jogar Novamente</button>
 </div>
 
-<audio id="som" src="musica.mp3"></audio>
+<canvas id="game"></canvas>
+
+<div id="controles">
+<div class="btn" id="andar">➡️</div>
+<div class="btn" id="pular">⬆️</div>
+</div>
+
+<audio id="audio" src="musica.mp3" preload="auto"></audio>
 
 <script>
 
-document.addEventListener("contextmenu",e=>e.preventDefault())
-document.addEventListener("touchstart",e=>e.preventDefault(),{passive:false})
-document.addEventListener("touchmove",e=>e.preventDefault(),{passive:false})
+document.addEventListener("contextmenu",e=>e.preventDefault());
 
-let canvas=document.getElementById("game")
-let ctx=canvas.getContext("2d")
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
 
-canvas.width=innerWidth
-canvas.height=innerHeight
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let audio = document.getElementById("audio");
+let morteTela = document.getElementById("morteTela");
+let voltar = document.getElementById("voltar");
+
+let score=0;
+let record = localStorage.getItem("record")||0;
+let velocidade=4;
+let morreu=false;
 
 let player={
-x:100,
+x:50,
 y:canvas.height-100,
 w:40,
 h:40,
-vy:0,
-gravity:0.7,
-jump:-14
+dy:0,
+pulando:false
 }
 
-let obstacles=[]
-let andando=false
-let morreu=false
-let pause=false
-let score=0
-let record=localStorage.getItem("record")||0
-let audioLiberado=false
+let obstaculos=[];
+let andando=false;
+let pausado=false;
 
-function liberarAudio(){
-if(!audioLiberado){
-let a=document.getElementById("som")
-a.play().then(()=>{
-a.pause()
-a.currentTime=0
-audioLiberado=true
+function desenharPlayer(){
+ctx.fillStyle="white";
+ctx.fillRect(player.x,player.y,player.w,player.h);
+}
+
+function desenharObstaculos(){
+ctx.fillStyle="red";
+obstaculos.forEach(o=>{
+ctx.fillRect(o.x,o.y,o.w,o.h);
 })
 }
-}
 
-function spawn(){
-if(!morreu && !pause){
-obstacles.push({
+function criarObstaculo(){
+if(!morreu){
+obstaculos.push({
 x:canvas.width,
-y:canvas.height-50,
-w:30,
-h:40
+y:canvas.height-100,
+w:40,
+h:40,
+passou:false
 })
 }
 }
 
-setInterval(spawn,1800)
+setInterval(criarObstaculo,2000);
 
-function update(){
-
-if(morreu||pause)return
-
-if(andando){
-for(let o of obstacles)o.x-=6
+function colisao(p,o){
+return(
+p.x<o.x+o.w &&
+p.x+p.w>o.x &&
+p.y<o.y+o.h &&
+p.y+p.h>o.y
+)
 }
-
-player.vy+=player.gravity
-player.y+=player.vy
-
-if(player.y+player.h>canvas.height-10){
-player.y=canvas.height-10-player.h
-player.vy=0
-}
-
-for(let i=0;i<obstacles.length;i++){
-
-let o=obstacles[i]
-
-if(player.x<o.x+o.w &&
-player.x+player.w>o.x &&
-player.y<o.y+o.h &&
-player.y+player.h>o.y){
-morrer()
-}
-
-if(o.x+o.w<0){
-obstacles.splice(i,1)
-score++
-}
-}
-
-}
-
-function draw(){
-
-ctx.clearRect(0,0,canvas.width,canvas.height)
-
-ctx.fillStyle="cyan"
-ctx.fillRect(player.x,player.y,player.w,player.h)
-
-ctx.fillStyle="red"
-for(let o of obstacles)
-ctx.fillRect(o.x,o.y,o.w,o.h)
-
-ctx.fillStyle="white"
-ctx.fillText("Pontos:"+score,20,40)
-ctx.fillText("Record:"+record,20,70)
-
-}
-
-function loop(){
-update()
-draw()
-requestAnimationFrame(loop)
-}
-
-loop()
-
-function pular(){
-if(!morreu && player.vy==0){
-liberarAudio()
-player.vy=player.jump
-}
-}
-
-andar.ontouchstart=()=>{
-liberarAudio()
-andando=true
-}
-andar.ontouchend=()=>andando=false
-
-pular.ontouchstart=pular
-
-pause.onclick=()=>pause=!pause
 
 function morrer(){
 
-morreu=true
+if(morreu) return;
 
-if(score>record){
-record=score
-localStorage.setItem("record",record)
-}
+morreu=true;
 
-let a=document.getElementById("som")
-a.currentTime=0
-a.play()
+morteTela.style.display="flex";
 
-morteTela.style.display="flex"
+audio.currentTime=0;
+audio.play();
 
 setTimeout(()=>{
-voltar.style.display="block"
-},2000)
+voltar.style.display="block";
+},2000);
+
+if(score>record){
+localStorage.setItem("record",score);
+}
 
 }
 
-voltar.onclick=()=>{
-location.reload()
+function update(){
+
+if(pausado || morreu) return;
+
+ctx.clearRect(0,0,canvas.width,canvas.height);
+
+if(andando){
+player.x+=5;
 }
+
+player.dy+=0.6;
+player.y+=player.dy;
+
+if(player.y>canvas.height-100){
+player.y=canvas.height-100;
+player.pulando=false;
+}
+
+obstaculos.forEach(o=>{
+o.x-=velocidade;
+
+if(!o.passou && o.x+o.w<player.x){
+score++;
+o.passou=true;
+
+if(score%5==0){
+velocidade+=1;
+}
+}
+
+if(colisao(player,o)){
+morrer();
+}
+})
+
+desenharPlayer();
+desenharObstaculos();
+
+requestAnimationFrame(update);
+}
+
+update();
+
+let andarBtn = document.getElementById("andar");
+let pularBtn = document.getElementById("pular");
+
+andarBtn.addEventListener("touchstart",(e)=>{
+e.stopPropagation();
+andando=true;
+})
+
+andarBtn.addEventListener("touchend",(e)=>{
+e.stopPropagation();
+andando=false;
+})
+
+pularBtn.addEventListener("touchstart",(e)=>{
+e.stopPropagation();
+if(!player.pulando){
+player.dy=-13;
+player.pulando=true;
+}
+})
+
+voltar.addEventListener("touchstart",()=>{
+audio.pause();
+audio.currentTime=0;
+location.reload();
+})
+
+document.getElementById("pause").addEventListener("touchstart",()=>{
+pausado=!pausado;
+})
 
 </script>
 </body>
