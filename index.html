@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Jogo</title>
 <link rel="stylesheet" href="style.css">
 </head>
@@ -10,30 +10,27 @@
 <body oncontextmenu="return false">
 
 <div id="game">
+    <div id="player"></div>
+    <div id="obstacle"></div>
+</div>
 
-<div id="player"></div>
-<div id="obstacle"></div>
-
-<div id="score">0</div>
-<div id="record">REC: 0</div>
-
-<button id="pauseBtn">⏸️</button>
+<h2>Pontos: <span id="score">0</span></h2>
+<h3>Recorde: <span id="highscore">0</span></h3>
 
 <div id="controls">
-<button id="left">⬅️</button>
-<button id="jump">⬆️</button>
-<button id="right">➡️</button>
+    <button id="left">←</button>
+    <button id="jump">↑</button>
+    <button id="right">→</button>
 </div>
 
-<div id="gameOver">
-<img src="morte.png" id="deathImg">
-<br>
-<button id="restart">Jogar Novamente</button>
+<button id="pause">⏸️</button>
+
+<div id="deathScreen">
+    <img src="morte.png">
+    <button id="restart">Jogar Novamente</button>
 </div>
 
-</div>
-
-<audio id="deathSound" src="musica.mp3"></audio>
+<audio id="deathMusic" src="musica.mp3"></audio>
 
 <script src="script.js"></script>
 </body>
