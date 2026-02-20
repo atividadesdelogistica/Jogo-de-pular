@@ -17,36 +17,52 @@ background:#111;
 }
 
 canvas{
-background:#222;
 display:block;
+background:#222;
 }
 
-#controles{
+/* CONTROLES */
+#pular{
 position:fixed;
-bottom:10px;
-width:100%;
-display:flex;
-justify-content:space-between;
+bottom:20px;
+left:20px;
+width:80px;
+height:80px;
+font-size:40px;
+border:none;
+border-radius:20px;
+background:#444;
+color:white;
 z-index:10;
 }
 
-button{
-width:45%;
+#andar{
+position:fixed;
+bottom:20px;
+right:20px;
+width:80px;
+height:80px;
+font-size:40px;
+border:none;
+border-radius:20px;
+background:#444;
+color:white;
+z-index:10;
+}
+
+/* PAUSE */
+#pause{
+position:fixed;
+top:20px;
+right:20px;
+width:60px;
 height:60px;
 font-size:30px;
 border:none;
-background:#555;
-color:#fff;
-}
-
-#pause{
-position:fixed;
-top:10px;
-right:10px;
-width:60px;
-height:60px;
-background:url("morte.png");
-background-size:cover;
+border-radius:15px;
+background:#444;
+color:white;
+z-index:10;
 }
 </style>
 </head>
@@ -54,12 +70,9 @@ background-size:cover;
 
 <canvas id="game"></canvas>
 
-<div id="controles">
-<button id="andar">➡️</button>
 <button id="pular">⬆️</button>
-</div>
-
-<button id="pause"></button>
+<button id="andar">➡️</button>
+<button id="pause">⏸️</button>
 
 <script>
 document.addEventListener("contextmenu", e=>e.preventDefault());
@@ -70,6 +83,7 @@ let ctx=canvas.getContext("2d");
 function resize(){
 canvas.width=window.innerWidth;
 canvas.height=window.innerHeight;
+player.y=canvas.height-60;
 }
 resize();
 window.onresize=resize;
