@@ -1,188 +1,40 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Jogo</title>
-
-<style>
-body{
-margin:0;
-overflow:hidden;
-touch-action: manipulation;
--webkit-user-select:none;
-user-select:none;
-}
-
-canvas{
-background:#87CEEB;
-display:block;
-}
-
-#pauseBtn{
-position:absolute;
-top:10px;
-right:10px;
-font-size:20px;
-padding:10px;
-}
-
-#morteImg{
-display:none;
-position:absolute;
-top:50%;
-left:50%;
-transform:translate(-50%,-50%);
-width:200px;
-}
-
-#restartBtn{
-display:none;
-position:absolute;
-top:70%;
-left:50%;
-transform:translate(-50%,-50%);
-font-size:20px;
-padding:10px;
-}
-</style>
+<link rel="stylesheet" href="style.css">
 </head>
 
-<body>
+<body oncontextmenu="return false">
 
-<button id="pauseBtn">⏸</button>
-<button id="restartBtn">Jogar Novamente</button>
-<img src="morte.png" id="morteImg">
+<div id="game">
 
-<audio id="audio" src="musica.mp3"></audio>
+<div id="player"></div>
+<div id="obstacle"></div>
 
-<canvas id="game"></canvas>
+<div id="score">0</div>
+<div id="record">REC: 0</div>
 
-<script>
-let canvas=document.getElementById("game");
-let ctx=canvas.getContext("2d");
+<button id="pauseBtn">⏸️</button>
 
-function resize(){
-canvas.width=window.innerWidth;
-canvas.height=window.innerHeight;
-}
-resize();
-window.addEventListener("resize",resize);
+<div id="controls">
+<button id="left">⬅️</button>
+<button id="jump">⬆️</button>
+<button id="right">➡️</button>
+</div>
 
-let player={x:50,y:0,w:50,h:50,vy:0,jump:false};
-let obst={x:0,y:0,w:50,h:50};
+<div id="gameOver">
+<img src="morte.png" id="deathImg">
+<br>
+<button id="restart">Jogar Novamente</button>
+</div>
 
-let score=0;
-let level=1;
-let record=localStorage.getItem("record")||0;
+</div>
 
-let gravity=0.8;
-let speed=5;
+<audio id="deathSound" src="musica.mp3"></audio>
 
-let gameOver=false;
-let paused=false;
-
-function reset(){
-score=0;
-level=1;
-speed=5;
-player.y=canvas.height-100;
-player.vy=0;
-obst.x=canvas.width;
-obst.y=canvas.height-100;
-gameOver=false;
-
-document.getElementById("morteImg").style.display="none";
-document.getElementById("restartBtn").style.display="none";
-}
-
-reset();
-
-function draw(){
-ctx.clearRect(0,0,canvas.width,canvas.height);
-
-ctx.fillStyle="black";
-ctx.fillRect(player.x,player.y,player.w,player.h);
-
-ctx.fillStyle="red";
-ctx.fillRect(obst.x,obst.y,obst.w,obst.h);
-
-ctx.fillStyle="white";
-ctx.font="20px Arial";
-ctx.fillText("Pontos: "+score,10,30);
-ctx.fillText("Level: "+level,10,60);
-ctx.fillText("Recorde: "+record,10,90);
-}
-
-function update(){
-if(gameOver||paused)return;
-
-player.vy+=gravity;
-player.y+=player.vy;
-
-if(player.y>canvas.height-100){
-player.y=canvas.height-100;
-player.jump=false;
-}
-
-obst.x-=speed;
-
-if(obst.x+50<0){
-obst.x=canvas.width;
-score++;
-
-if(score%5==0){
-level++;
-speed+=1;
-}
-}
-
-if(player.x<obst.x+50&&
-player.x+50>obst.x&&
-player.y<obst.y+50&&
-player.y+50>obst.y){
-
-gameOver=true;
-
-if(score>record){
-record=score;
-localStorage.setItem("record",record);
-}
-
-document.getElementById("morteImg").style.display="block";
-document.getElementById("restartBtn").style.display="block";
-
-let audio=document.getElementById("audio");
-audio.currentTime=0;
-audio.play();
-}
-}
-
-function loop(){
-update();
-draw();
-requestAnimationFrame(loop);
-}
-loop();
-
-function jump(){
-if(!player.jump&&!gameOver&&!paused){
-player.vy=-15;
-player.jump=true;
-}
-}
-
-canvas.addEventListener("touchstart",jump);
-canvas.addEventListener("click",jump);
-
-document.getElementById("pauseBtn").onclick=function(){
-paused=!paused;
-}
-
-document.getElementById("restartBtn").onclick=function(){
-reset();
-}
-</script>
-
+<script src="script.js"></script>
 </body>
 </html>
