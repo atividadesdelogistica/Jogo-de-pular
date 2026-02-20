@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-br">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,33 +10,34 @@ body{
 margin:0;
 overflow:hidden;
 background:#111;
-font-family:Arial;
 }
 
 canvas{
-background:#87CEEB;
+background:#1e1e2e;
 display:block;
+margin:auto;
 }
 
-#controls{
+.controls{
 position:fixed;
-bottom:20px;
-left:20px;
-z-index:10;
+bottom:10px;
+width:100%;
+display:flex;
+justify-content:space-between;
+padding:0 20px;
 }
 
-.btn{
-width:70px;
-height:70px;
+button{
+width:80px;
+height:80px;
 font-size:30px;
-margin:5px;
-border-radius:15px;
 border:none;
-background:#333;
-color:white;
+border-radius:50%;
+background:#444;
+color:#fff;
 }
 
-#gameOver{
+#menuMorte{
 position:fixed;
 top:0;
 left:0;
@@ -44,17 +45,20 @@ width:100%;
 height:100%;
 background:rgba(0,0,0,0.9);
 display:none;
-align-items:center;
 justify-content:center;
+align-items:center;
 flex-direction:column;
-color:white;
 }
 
-#restart{
-margin-top:20px;
-padding:10px 20px;
-font-size:20px;
+#menuMorte img{
+width:200px;
+}
+
+#voltar{
 display:none;
+margin-top:20px;
+padding:10px 30px;
+font-size:20px;
 }
 </style>
 </head>
@@ -63,138 +67,148 @@ display:none;
 
 <canvas id="game"></canvas>
 
-<div id="controls">
-<button class="btn" id="right">➡️</button>
-<button class="btn" id="jump">⬆️</button>
+<div class="controls">
+<button id="andar">➡️</button>
+<button id="pular">⬆️</button>
 </div>
 
-<div id="gameOver">
-<h1>GAME OVER</h1>
-<canvas id="dead" width="100" height="100"></canvas>
-<button id="restart">Jogar de Novo</button>
+<div id="menuMorte">
+<img src="morte.png">
+<button id="voltar">Jogar de Novo</button>
 </div>
 
-<audio id="deathSound" src="musica.mp3"></audio>
+<audio id="audio" src="musica.mp3"></audio>
 
 <script>
-const canvas=document.getElementById("game")
-const ctx=canvas.getContext("2d")
-canvas.width=innerWidth
-canvas.height=innerHeight
 
-let player={
-x:100,
-y:canvas.height-150,
+const canvas = document.getElementById("game")
+const ctx = canvas.getContext("2d")
+
+canvas.width = window.innerWidth
+canvas.height = window.innerHeight
+
+let andando = false
+
+let player = {
+x:60,
+y:canvas.height-120,
 w:40,
 h:40,
 dy:0,
-jump:false,
-move:false
+pulando:false
 }
 
-let gravity=1
-let obstacles=[]
-let gameOver=false
+let obstaculos=[]
 
-function createObstacle(){
-obstacles.push({
+const gravidade=0.6
+const forcaPulo=-12
+let velocidade=4
+let vivo=true
+
+function criarObstaculo(){
+obstaculos.push({
 x:canvas.width,
-y:canvas.height-80,
+y:canvas.height-120,
 w:40,
 h:40
 })
 }
 
-setInterval(createObstacle,2000)
+setInterval(()=>{
+if(vivo)criarObstaculo()
+},2000)
 
-function drawPlayer(){
-ctx.fillStyle="red"
+function colisao(p,o){
+return(
+p.x<o.x+o.w &&
+p.x+p.w>o.x &&
+p.y<o.y+o.h &&
+p.y+p.h>o.y
+)
+}
+
+function desenharPlayer(){
+ctx.fillStyle="yellow"
 ctx.fillRect(player.x,player.y,player.w,player.h)
 }
 
-function drawObstacles(){
-ctx.fillStyle="green"
-obstacles.forEach(o=>{
+function desenharObstaculos(){
+ctx.fillStyle="red"
+obstaculos.forEach(o=>{
 ctx.fillRect(o.x,o.y,o.w,o.h)
-o.x-=5
 })
 }
 
-function physics(){
-if(player.jump){
-player.dy=-15
-player.jump=false
+function atualizar(){
+ctx.clearRect(0,0,canvas.width,canvas.height)
+
+if(andando){
+player.x+=velocidade
 }
-player.dy+=gravity
+
+player.dy+=gravidade
 player.y+=player.dy
-if(player.y>canvas.height-150){
-player.y=canvas.height-150
+
+if(player.y>=canvas.height-120){
+player.y=canvas.height-120
 player.dy=0
-}
+player.pulando=false
 }
 
-function collision(){
-obstacles.forEach(o=>{
-if(player.x<o.x+o.w &&
-player.x+player.w>o.x &&
-player.y<o.y+o.h &&
-player.y+player.h>o.y){
-die()
+obstaculos.forEach(o=>{
+o.x-=velocidade
+
+if(colisao(player,o)){
+morrer()
 }
 })
+
+desenharPlayer()
+desenharObstaculos()
+
+if(vivo)requestAnimationFrame(atualizar)
 }
 
-function die(){
-if(gameOver)return
-gameOver=true
-document.getElementById("gameOver").style.display="flex"
-
-let dead=document.getElementById("dead").getContext("2d")
-dead.fillStyle="red"
-dead.fillRect(20,20,60,60)
-
-let s=document.getElementById("deathSound")
-s.pause()
-s.currentTime=0
-s.play()
+function morrer(){
+vivo=false
+document.getElementById("menuMorte").style.display="flex"
+let audio=document.getElementById("audio")
+audio.currentTime=0
+audio.play()
 
 setTimeout(()=>{
-document.getElementById("restart").style.display="block"
+document.getElementById("voltar").style.display="block"
 },2000)
 }
 
-function loop(){
-ctx.clearRect(0,0,canvas.width,canvas.height)
-
-if(player.move) player.x+=5
-
-drawPlayer()
-drawObstacles()
-physics()
-collision()
-
-if(!gameOver)requestAnimationFrame(loop)
-}
-
-loop()
-
-document.getElementById("right").ontouchstart=()=>player.move=true
-document.getElementById("right").ontouchend=()=>player.move=false
-document.getElementById("jump").ontouchstart=()=>player.jump=true
-
-document.addEventListener("keydown",e=>{
-if(e.key==="ArrowRight")player.move=true
-if(e.key==="ArrowUp")player.jump=true
-})
-
-document.addEventListener("keyup",e=>{
-if(e.key==="ArrowRight")player.move=false
-})
-
-document.getElementById("restart").onclick=()=>{
+document.getElementById("voltar").onclick=()=>{
 location.reload()
 }
-</script>
 
+document.getElementById("andar").ontouchstart=()=>andando=true
+document.getElementById("andar").ontouchend=()=>andando=false
+
+document.getElementById("pular").onclick=()=>{
+if(!player.pulando){
+player.dy=forcaPulo
+player.pulando=true
+}
+}
+
+document.addEventListener("keydown",(e)=>{
+if(e.key==="ArrowRight")andando=true
+if(e.key==="ArrowUp"&&!player.pulando){
+player.dy=forcaPulo
+player.pulando=true
+}
+})
+
+document.addEventListener("keyup",(e)=>{
+if(e.key==="ArrowRight")andando=false
+})
+
+atualizar()
+
+</script>
 </body>
 </html>
