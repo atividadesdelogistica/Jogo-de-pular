@@ -1,77 +1,67 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<title>Pixel Jump</title>
 
 <style>
-
-*{
-user-select:none;
--webkit-user-select:none;
--webkit-touch-callout:none;
-}
+*{margin:0;padding:0;box-sizing:border-box;user-select:none}
 
 body{
-margin:0;
-overflow:hidden;
 background:#111;
+overflow:hidden;
 touch-action:none;
 }
 
 canvas{
+background:linear-gradient(#7ec0ff,#dff6ff);
 display:block;
 }
 
-#controles{
+.btn{
 position:fixed;
 bottom:20px;
-width:100%;
-display:flex;
-justify-content:space-between;
-padding:0 20px;
-z-index:2;
-}
-
-.btn{
 width:70px;
 height:70px;
-background:#333;
+background:#000a;
 color:white;
-font-size:30px;
-border-radius:50%;
+font-size:35px;
+border-radius:15px;
 display:flex;
-justify-content:center;
 align-items:center;
-pointer-events:auto;
+justify-content:center;
 }
 
-#menuMorte{
+#right{right:20px}
+#jump{right:100px}
+
+#gameOver{
 position:fixed;
 top:0;
 left:0;
 width:100%;
 height:100%;
-background:rgba(0,0,0,0.95);
+background:#000d;
 display:none;
 flex-direction:column;
-justify-content:center;
 align-items:center;
-z-index:3;
-pointer-events:auto;
+justify-content:center;
+color:white;
+font-size:30px;
 }
 
-#voltar{
-display:none;
+#retry{
+margin-top:20px;
 padding:15px 30px;
 font-size:20px;
-margin-top:20px;
+display:none;
 }
 
 #imgMorte{
 width:200px;
 pointer-events:none;
 }
-
 </style>
 </head>
 
@@ -79,180 +69,200 @@ pointer-events:none;
 
 <canvas id="game"></canvas>
 
-<div id="controles">
-<div class="btn" id="andar">➡️</div>
-<div class="btn" id="pular">⬆️</div>
+<div id="right" class="btn">➡️</div>
+<div id="jump" class="btn">⬆️</div>
+
+<div id="gameOver">
+<img id="imgMorte" src="morte.png">
+<button id="retry">Jogar Novamente</button>
 </div>
 
-<div id="menuMorte">
-<img id="imgMorte"
-src="https://i.imgur.com/6RL1ZsR.png"
-draggable="false">
-<button id="voltar">Jogar de Novo</button>
-</div>
-
-<audio id="audio" src="musica.mp3"></audio>
+<audio id="som" src="musica.mp3"></audio>
 
 <script>
-
-document.addEventListener("contextmenu",e=>e.preventDefault())
-document.addEventListener("selectstart",e=>e.preventDefault())
-document.addEventListener("dragstart",e=>e.preventDefault())
 
 const canvas=document.getElementById("game")
 const ctx=canvas.getContext("2d")
 
-canvas.width=innerWidth
-canvas.height=innerHeight
-
-let andando=false
-let morreu=false
-
-let audio=document.getElementById("audio")
+function resize(){
+canvas.width=window.innerWidth
+canvas.height=window.innerHeight
+}
+resize()
+window.onresize=resize
 
 let player={
-x:60,
-y:canvas.height-120,
+x:100,
+y:300,
 w:40,
 h:40,
-dy:0,
-pulando:false
+dy:0
 }
+
+let andando=false
+let pulando=false
+let morreu=false
+
+let gravidade=0.8
+let forcaPulo=-17
 
 let obstaculos=[]
-
-const gravidade=0.8
-const forcaPulo=-17
 let velocidade=5
+let dificuldade=1
+let intervalo=1700
 
-function criarObstaculo(){
-obstaculos.push({
-x:canvas.width,
-y:canvas.height-120,
-w:40,
-h:40
-})
-}
-
-setInterval(()=>{
-if(!morreu)criarObstaculo()
-},1700)
-
-function colisao(p,o){
-return(
-p.x<o.x+o.w &&
-p.x+p.w>o.x &&
-p.y<o.y+o.h &&
-p.y+p.h>o.y
-)
-}
+const som=document.getElementById("som")
 
 function desenharPlayer(){
-ctx.fillStyle="#FFD800"
-ctx.fillRect(player.x,player.y,40,40)
+
+ctx.fillStyle="#ffcc00"
+ctx.fillRect(player.x,player.y,player.w,player.h)
+
 ctx.fillStyle="#000"
 ctx.fillRect(player.x+10,player.y+10,5,5)
 ctx.fillRect(player.x+25,player.y+10,5,5)
+
 }
 
-function desenharObstaculos(){
-ctx.fillStyle="#ff4444"
-obstaculos.forEach(o=>{
-ctx.fillRect(o.x,o.y,40,40)
-})
-}
+function criarObstaculo(){
 
-function loop(){
+let altura=40+(dificuldade*5)
 
-ctx.clearRect(0,0,canvas.width,canvas.height)
-
-// 🚫 NÃO SAIR DA ÁREA
-if(andando && !morreu){
-player.x+=velocidade
-}
-
-if(player.x<0)player.x=0
-if(player.x>canvas.width-player.w)
-player.x=canvas.width-player.w
-
-player.dy+=gravidade
-player.y+=player.dy
-
-if(player.y>=canvas.height-120){
-player.y=canvas.height-120
-player.dy=0
-player.pulando=false
-}
-
-obstaculos.forEach(o=>{
-o.x-=velocidade
-if(colisao(player,o)&&!morreu){
-morrer()
-}
+obstaculos.push({
+x:canvas.width,
+y:canvas.height-altura-80,
+w:40,
+h:altura,
+passou:false
 })
 
-desenharPlayer()
-desenharObstaculos()
+}
 
-requestAnimationFrame(loop)
+function gerarLoop(){
+setTimeout(()=>{
+if(!morreu){
+criarObstaculo()
+gerarLoop()
+}
+},intervalo)
+}
+gerarLoop()
+
+function colisao(a,b){
+return a.x<a.x+b.w &&
+a.x+a.w>b.x &&
+a.y<a.y+b.h &&
+a.y+a.h>b.y
 }
 
 function morrer(){
 
 morreu=true
 
-audio.pause()
-audio.currentTime=0
-audio.play()
+som.currentTime=0
+som.play()
 
-document.getElementById("menuMorte").style.display="flex"
+document.getElementById("gameOver").style.display="flex"
 
 setTimeout(()=>{
-document.getElementById("voltar").style.display="block"
+document.getElementById("retry").style.display="block"
 },2000)
+
 }
 
-document.getElementById("voltar").onclick=()=>{
-audio.pause()
-audio.currentTime=0
-location.reload()
+document.getElementById("retry").onclick=()=>{
+
+som.pause()
+som.currentTime=0
+
+morreu=false
+player.y=300
+obstaculos=[]
+velocidade=5
+dificuldade=1
+intervalo=1700
+
+document.getElementById("gameOver").style.display="none"
+document.getElementById("retry").style.display="none"
+
 }
 
-// ANDAR
-document.getElementById("andar")
-.addEventListener("touchstart",()=>{
-andando=true
-})
+function loop(){
 
-document.getElementById("andar")
-.addEventListener("touchend",()=>{
-andando=false
-})
+ctx.clearRect(0,0,canvas.width,canvas.height)
 
-// PULAR
-document.getElementById("pular")
-.addEventListener("touchstart",()=>{
-if(!player.pulando && !morreu){
-player.dy=forcaPulo
-player.pulando=true
+if(andando && !morreu){
+player.x+=velocidade
 }
-})
 
-// TECLADO
-document.addEventListener("keydown",(e)=>{
-if(e.key==="ArrowRight")andando=true
+player.dy+=gravidade
+player.y+=player.dy
 
-if(e.key==="ArrowUp" && !player.pulando && !morreu){
-player.dy=forcaPulo
-player.pulando=true
+if(player.y>canvas.height-80){
+player.y=canvas.height-80
+player.dy=0
+pulando=false
 }
+
+if(player.x<0)player.x=0
+if(player.x>canvas.width-50)player.x=canvas.width-50
+
+desenharPlayer()
+
+obstaculos.forEach(o=>{
+
+o.x-=velocidade
+
+ctx.fillStyle="red"
+ctx.fillRect(o.x,o.y,o.w,o.h)
+
+if(!o.passou && o.x+o.w<player.x){
+o.passou=true
+dificuldade+=0.2
+velocidade+=0.3
+if(intervalo>700)intervalo-=80
+}
+
+if(
+player.x<o.x+o.w &&
+player.x+player.w>o.x &&
+player.y<o.y+o.h &&
+player.y+player.h>o.y &&
+!morreu
+){
+morrer()
+}
+
 })
 
-document.addEventListener("keyup",(e)=>{
-if(e.key==="ArrowRight")andando=false
-})
+requestAnimationFrame(loop)
+}
 
 loop()
+
+document.getElementById("right").ontouchstart=()=>andando=true
+document.getElementById("right").ontouchend=()=>andando=false
+
+document.getElementById("jump").ontouchstart=()=>{
+if(!pulando){
+player.dy=forcaPulo
+pulando=true
+}
+}
+
+window.onkeydown=e=>{
+if(e.key=="ArrowRight"||e.key=="d")andando=true
+if(e.key=="ArrowUp"||e.key=="w"){
+if(!pulando){
+player.dy=forcaPulo
+pulando=true
+}
+}
+}
+
+window.onkeyup=e=>{
+if(e.key=="ArrowRight"||e.key=="d")andando=false
+}
 
 </script>
 </body>
