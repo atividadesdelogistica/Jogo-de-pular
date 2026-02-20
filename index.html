@@ -1,19 +1,18 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html>
 <head>
-<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
 <style>
 
 body{
 margin:0;
 overflow:hidden;
 background:#111;
-touch-action:none;
 }
 
 canvas{
 display:block;
-background:linear-gradient(#6ec6ff,#e0f7ff);
+background:#87CEEB;
 }
 
 .btn{
@@ -53,12 +52,10 @@ padding:15px 30px;
 font-size:20px;
 }
 
-img{pointer-events:none}
-
 </style>
 </head>
 
-<body oncontextmenu="return false">
+<body>
 
 <canvas id="game"></canvas>
 
@@ -74,22 +71,19 @@ img{pointer-events:none}
 
 <script>
 
-const canvas=game
+window.onload=function(){
+
+const canvas=document.getElementById("game")
 const ctx=canvas.getContext("2d")
 
-function resize(){
-canvas.width=innerWidth
-canvas.height=innerHeight
-ground=canvas.height-100
-}
-resize()
-onresize=resize
+canvas.width=window.innerWidth
+canvas.height=window.innerHeight
 
-let ground
+let ground=canvas.height-100
 
 let player={
 x:100,
-y:0,
+y:ground-40,
 w:40,
 h:40,
 dy:0
@@ -104,21 +98,17 @@ let pulo=-18
 
 let obstaculos=[]
 let velocidade=5
-let dificuldade=1
 let intervalo=1500
 
 const som=document.getElementById("som")
 
 function criarObs(){
 
-let altura=40
-
 obstaculos.push({
 x:canvas.width,
-y:ground-altura,
+y:ground-40,
 w:40,
-h:altura,
-passou:false
+h:40
 })
 
 }
@@ -152,11 +142,9 @@ som.pause()
 som.currentTime=0
 
 morreu=false
-player.y=ground-player.h
 obstaculos=[]
-velocidade=5
-dificuldade=1
-intervalo=1500
+player.x=100
+player.y=ground-player.h
 
 gameOver.style.display="none"
 retry.style.display="none"
@@ -179,10 +167,7 @@ player.dy=0
 pulando=false
 }
 
-if(player.x<0)player.x=0
-if(player.x>canvas.width-player.w)player.x=canvas.width-player.w
-
-ctx.fillStyle="#ffcc00"
+ctx.fillStyle="yellow"
 ctx.fillRect(player.x,player.y,player.w,player.h)
 
 obstaculos.forEach(o=>{
@@ -191,13 +176,6 @@ o.x-=velocidade
 
 ctx.fillStyle="red"
 ctx.fillRect(o.x,o.y,o.w,o.h)
-
-if(!o.passou && o.x+o.w<player.x){
-o.passou=true
-dificuldade+=0.2
-velocidade+=0.3
-if(intervalo>700)intervalo-=80
-}
 
 if(
 player.x<o.x+o.w &&
@@ -214,7 +192,6 @@ morrer()
 requestAnimationFrame(loop)
 }
 
-player.y=ground-player.h
 loop()
 
 right.ontouchstart=()=>andando=true
@@ -228,8 +205,8 @@ pulando=true
 }
 
 onkeydown=e=>{
-if(e.key=="ArrowRight"||e.key=="d")andando=true
-if(e.key=="ArrowUp"||e.key=="w"){
+if(e.key=="ArrowRight")andando=true
+if(e.key=="ArrowUp"){
 if(!pulando){
 player.dy=pulo
 pulando=true
@@ -238,7 +215,9 @@ pulando=true
 }
 
 onkeyup=e=>{
-if(e.key=="ArrowRight"||e.key=="d")andando=false
+if(e.key=="ArrowRight")andando=false
+}
+
 }
 
 </script>
