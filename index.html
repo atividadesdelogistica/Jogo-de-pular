@@ -1,17 +1,15 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pixel Runner</title>
-
 <style>
+
 *{
 margin:0;
 padding:0;
 box-sizing:border-box;
--webkit-user-select:none;
 user-select:none;
+-webkit-user-select:none;
 -webkit-touch-callout:none;
 }
 
@@ -22,124 +20,159 @@ touch-action:none;
 }
 
 canvas{
-background:#111;
+background:#1a1a1a;
 display:block;
 }
 
-#pauseBtn{
+.btn{
 position:absolute;
-top:15px;
-right:15px;
-z-index:10;
-padding:10px 20px;
-background:red;
+bottom:30px;
+width:70px;
+height:70px;
+background:#444;
 color:white;
-border:none;
-font-size:18px;
+font-size:30px;
+border-radius:50%;
+display:flex;
+align-items:center;
+justify-content:center;
+z-index:5;
+}
+
+#andar{left:20px;}
+#pular{right:20px;}
+
+#pause{
+position:absolute;
+top:10px;
+right:10px;
+padding:10px;
+z-index:10;
 }
 
 #morteTela{
 position:absolute;
-width:100%;
-height:100%;
 top:0;
 left:0;
-display:none;
-justify-content:center;
-align-items:center;
+width:100%;
+height:100%;
 background:black;
+display:none;
 flex-direction:column;
+align-items:center;
+justify-content:center;
 z-index:20;
 }
 
-#morteTela img{
-width:250px;
+#voltar{
+margin-top:20px;
+padding:10px;
+display:none;
 }
+
 </style>
 </head>
 
 <body>
 
-<button id="pauseBtn">⏸️</button>
+<canvas id="game"></canvas>
+
+<div id="andar" class="btn">➡️</div>
+<div id="pular" class="btn">⬆️</div>
+<button id="pause">⏸️</button>
 
 <div id="morteTela">
-<img src="morte.png">
-<h1 style="color:white">VOCÊ MORREU</h1>
+<img src="morte.png" width="200">
+<h2 style="color:white">VOCÊ MORREU</h2>
+<button id="voltar">Jogar Novamente</button>
 </div>
 
-<audio id="audioMorte" src="musica.mp3"></audio>
-
-<canvas id="game"></canvas>
+<audio id="som" src="musica.mp3"></audio>
 
 <script>
 
-document.addEventListener("contextmenu", e => e.preventDefault());
-document.addEventListener("selectstart", e => e.preventDefault());
-document.addEventListener("touchstart", e => e.preventDefault(),{passive:false});
-document.addEventListener("touchmove", e => e.preventDefault(),{passive:false});
+document.addEventListener("contextmenu",e=>e.preventDefault())
+document.addEventListener("touchstart",e=>e.preventDefault(),{passive:false})
+document.addEventListener("touchmove",e=>e.preventDefault(),{passive:false})
 
-let canvas=document.getElementById("game");
-let ctx=canvas.getContext("2d");
+let canvas=document.getElementById("game")
+let ctx=canvas.getContext("2d")
 
-canvas.width=window.innerWidth;
-canvas.height=window.innerHeight;
+canvas.width=innerWidth
+canvas.height=innerHeight
 
 let player={
-x:50,
-y:200,
+x:100,
+y:canvas.height-100,
 w:40,
 h:40,
 vy:0,
 gravity:0.7,
-jump:-13
+jump:-14
 }
 
-let obstacles=[];
-let score=0;
-let gameOver=false;
-let paused=false;
+let obstacles=[]
+let andando=false
+let morreu=false
+let pause=false
+let score=0
+let record=localStorage.getItem("record")||0
+let audioLiberado=false
 
-function spawnObstacle(){
+function liberarAudio(){
+if(!audioLiberado){
+let a=document.getElementById("som")
+a.play().then(()=>{
+a.pause()
+a.currentTime=0
+audioLiberado=true
+})
+}
+}
+
+function spawn(){
+if(!morreu && !pause){
 obstacles.push({
 x:canvas.width,
 y:canvas.height-50,
-w:40,
-h:50
-});
+w:30,
+h:40
+})
+}
 }
 
-setInterval(()=>{
-if(!gameOver && !paused){
-spawnObstacle();
-}
-},1500);
+setInterval(spawn,1800)
 
 function update(){
 
-if(paused || gameOver) return;
+if(morreu||pause)return
 
-player.vy+=player.gravity;
-player.y+=player.vy;
+if(andando){
+for(let o of obstacles)o.x-=6
+}
 
-if(player.y+player.h>canvas.height){
-morrer();
+player.vy+=player.gravity
+player.y+=player.vy
+
+if(player.y+player.h>canvas.height-10){
+player.y=canvas.height-10-player.h
+player.vy=0
 }
 
 for(let i=0;i<obstacles.length;i++){
 
-let o=obstacles[i];
-o.x-=6;
+let o=obstacles[i]
 
 if(player.x<o.x+o.w &&
 player.x+player.w>o.x &&
 player.y<o.y+o.h &&
 player.y+player.h>o.y){
-morrer();
+morrer()
 }
 
 if(o.x+o.w<0){
-obstacles.splice(i,1);
-score++;
+obstacles.splice(i,1)
+score++
 }
 }
 
@@ -147,52 +180,69 @@ score++;
 
 function draw(){
 
-ctx.clearRect(0,0,canvas.width,canvas.height);
+ctx.clearRect(0,0,canvas.width,canvas.height)
 
-ctx.fillStyle="cyan";
-ctx.fillRect(player.x,player.y,player.w,player.h);
+ctx.fillStyle="cyan"
+ctx.fillRect(player.x,player.y,player.w,player.h)
 
-ctx.fillStyle="red";
-for(let o of obstacles){
-ctx.fillRect(o.x,o.y,o.w,o.h);
-}
+ctx.fillStyle="red"
+for(let o of obstacles)
+ctx.fillRect(o.x,o.y,o.w,o.h)
 
-ctx.fillStyle="white";
-ctx.font="25px Arial";
-ctx.fillText("Pontos: "+score,20,40);
+ctx.fillStyle="white"
+ctx.fillText("Pontos:"+score,20,40)
+ctx.fillText("Record:"+record,20,70)
+
 }
 
 function loop(){
-update();
-draw();
-requestAnimationFrame(loop);
+update()
+draw()
+requestAnimationFrame(loop)
 }
 
-loop();
+loop()
 
 function pular(){
-if(!gameOver && !paused){
-player.vy=player.jump;
+if(!morreu && player.vy==0){
+liberarAudio()
+player.vy=player.jump
 }
 }
 
-canvas.addEventListener("touchstart",pular);
-canvas.addEventListener("mousedown",pular);
+andar.ontouchstart=()=>{
+liberarAudio()
+andando=true
+}
+andar.ontouchend=()=>andando=false
+
+pular.ontouchstart=pular
+
+pause.onclick=()=>pause=!pause
 
 function morrer(){
 
-gameOver=true;
+morreu=true
 
-document.getElementById("morteTela").style.display="flex";
+if(score>record){
+record=score
+localStorage.setItem("record",record)
+}
 
-let audio=document.getElementById("audioMorte");
-audio.currentTime=0;
-audio.play();
+let a=document.getElementById("som")
+a.currentTime=0
+a.play()
+
+morteTela.style.display="flex"
+
+setTimeout(()=>{
+voltar.style.display="block"
+},2000)
 
 }
 
-document.getElementById("pauseBtn").onclick=()=>{
-paused=!paused;
+voltar.onclick=()=>{
+location.reload()
 }
 
 </script>
