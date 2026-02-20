@@ -1,101 +1,102 @@
 let player = document.getElementById("player")
 let obstacle = document.getElementById("obstacle")
 let scoreText = document.getElementById("score")
-let recordText = document.getElementById("record")
-let gameOver = document.getElementById("gameOver")
-let restart = document.getElementById("restart")
-let deathSound = document.getElementById("deathSound")
-let pauseBtn = document.getElementById("pauseBtn")
+let highText = document.getElementById("highscore")
+let deathScreen = document.getElementById("deathScreen")
+let music = document.getElementById("deathMusic")
 
 let score = 0
-let record = localStorage.getItem("record") || 0
-recordText.innerText="REC: "+record
+let high = localStorage.getItem("high") || 0
+highText.innerText = high
 
 let speed = 5
-let playing = true
-let jumping=false
+let playerX = 50
+let jumping = false
+let paused = false
 
 function moveObstacle(){
-if(!playing)return
+if(paused)return
 
-let pos = obstacle.offsetLeft
-obstacle.style.left=(pos-speed)+"px"
+let obsX = obstacle.offsetLeft
+obstacle.style.left = (obsX - speed) + "px"
 
-if(pos<0){
-obstacle.style.left=window.innerWidth+"px"
+if(obsX < -40){
+obstacle.style.left = window.innerWidth + "px"
 score++
-scoreText.innerText=score
+scoreText.innerText = score
 
-if(score>record){
-record=score
-localStorage.setItem("record",record)
-recordText.innerText="REC: "+record
-}
-
-if(score%5==0){
-speed+=1
+if(score % 5 == 0){
+speed += 1
 }
 }
 
-let playerRect=player.getBoundingClientRect()
-let obsRect=obstacle.getBoundingClientRect()
+let playerRect = player.getBoundingClientRect()
+let obsRect = obstacle.getBoundingClientRect()
 
-if(playerRect.left<obsRect.right &&
-playerRect.right>obsRect.left &&
-playerRect.bottom>obsRect.top){
+if(
+playerRect.right > obsRect.left &&
+playerRect.left < obsRect.right &&
+playerRect.bottom > obsRect.top
+){
 die()
 }
-
-requestAnimationFrame(moveObstacle)
 }
+
+setInterval(moveObstacle,20)
 
 function jump(){
-if(jumping)return
-jumping=true
-let pos=50
+if(jumping || paused)return
+jumping = true
+let up = 0
 
-let up=setInterval(()=>{
-if(pos>=150){
-clearInterval(up)
-let down=setInterval(()=>{
-if(pos<=50){
-clearInterval(down)
-jumping=false
+let jumpInt = setInterval(()=>{
+if(up >= 100){
+clearInterval(jumpInt)
+let downInt = setInterval(()=>{
+if(up <= 0){
+clearInterval(downInt)
+jumping = false
 }else{
-pos-=5
-player.style.bottom=pos+"px"
+up -=5
+player.style.bottom = up+"px"
 }
 },20)
 }else{
-pos+=5
-player.style.bottom=pos+"px"
+up+=5
+player.style.bottom = up+"px"
 }
 },20)
 }
+
+document.getElementById("jump").ontouchstart = jump
+document.getElementById("left").ontouchstart = ()=>{playerX -=20; player.style.left = playerX+"px"}
+document.getElementById("right").ontouchstart = ()=>{playerX +=20; player.style.left = playerX+"px"}
 
 function die(){
-playing=false
-gameOver.style.display="block"
-deathSound.currentTime=0
-deathSound.play()
+paused = true
+deathScreen.style.display="flex"
+
+if(score>high){
+high=score
+localStorage.setItem("high",high)
+highText.innerText=high
+}
+
+music.currentTime=0
+music.play()
+}
+
+document.getElementById("restart").onclick = ()=>{
 score=0
-scoreText.innerText=score
-}
-
-restart.onclick=()=>{
-gameOver.style.display="none"
-obstacle.style.left=window.innerWidth+"px"
 speed=5
-playing=true
-deathSound.pause()
-deathSound.currentTime=0
-moveObstacle()
+scoreText.innerText=0
+obstacle.style.left=window.innerWidth+"px"
+deathScreen.style.display="none"
+paused=false
+music.pause()
+music.currentTime=0
 }
 
-pauseBtn.onclick=()=>{
-playing=!playing
-if(playing)moveObstacle()
+document.getElementById("pause").onclick = ()=>{
+paused = !paused
 }
-
-document.getElementById("jump").onclick=jump
-moveObstacle()
