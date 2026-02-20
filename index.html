@@ -58,9 +58,7 @@ padding:15px 30px;
 font-size:20px;
 }
 
-img{
-pointer-events:none;
-}
+img{pointer-events:none;}
 
 </style>
 </head>
@@ -93,6 +91,9 @@ canvas.height=window.innerHeight
 
 let ground=canvas.height-100
 
+let score=0
+let level=1
+
 let player={
 x:100,
 y:ground-40,
@@ -116,11 +117,14 @@ const som=document.getElementById("som")
 
 function criarObs(){
 
+let altura=40+level*5
+
 obstaculos.push({
 x:canvas.width,
-y:ground-40,
+y:ground-altura,
 w:40,
-h:40
+h:altura,
+passou:false
 })
 
 }
@@ -162,6 +166,10 @@ som.currentTime=0
 
 morreu=false
 obstaculos=[]
+score=0
+level=1
+velocidade=5
+intervalo=1500
 
 player.x=100
 player.y=ground-player.h
@@ -180,6 +188,10 @@ ctx.clearRect(0,0,canvas.width,canvas.height)
 if(andando && !morreu){
 player.x+=velocidade
 }
+
+if(player.x<0)player.x=0
+if(player.x>canvas.width-player.w)
+player.x=canvas.width-player.w
 
 player.dy+=gravidade
 player.y+=player.dy
@@ -210,7 +222,24 @@ player.y+player.h>o.y &&
 morrer()
 }
 
+if(!o.passou && o.x+o.w<player.x){
+o.passou=true
+score++
+
+if(score%5==0){
+level++
+velocidade+=1
+intervalo-=150
+if(intervalo<500)intervalo=500
+}
+}
+
 })
+
+ctx.fillStyle="black"
+ctx.font="20px Arial"
+ctx.fillText("Pontos: "+score,20,40)
+ctx.fillText("Nivel: "+level,20,70)
 
 requestAnimationFrame(loop)
 }
