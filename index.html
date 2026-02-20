@@ -3,65 +3,34 @@
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <style>
-*{
-margin:0;
-padding:0;
-overflow:hidden;
--webkit-user-select:none;
-user-select:none;
-touch-action:none;
-}
+*{margin:0;padding:0;overflow:hidden;-webkit-user-select:none;user-select:none;touch-action:none;}
+body{background:#111;}
+canvas{display:block;background:#222;}
 
-body{
-background:#111;
-}
-
-canvas{
-display:block;
-background:#222;
-}
-
-/* CONTROLES */
 #pular{
-position:fixed;
-bottom:20px;
-left:20px;
-width:80px;
-height:80px;
-font-size:40px;
-border:none;
-border-radius:20px;
-background:#444;
-color:white;
-z-index:10;
+position:fixed;bottom:20px;left:20px;
+width:90px;height:90px;font-size:40px;
+border:none;border-radius:20px;background:#444;color:#fff;
 }
 
 #andar{
-position:fixed;
-bottom:20px;
-right:20px;
-width:80px;
-height:80px;
-font-size:40px;
-border:none;
-border-radius:20px;
-background:#444;
-color:white;
-z-index:10;
+position:fixed;bottom:20px;right:20px;
+width:90px;height:90px;font-size:40px;
+border:none;border-radius:20px;background:#444;color:#fff;
 }
 
-/* PAUSE */
 #pause{
-position:fixed;
-top:20px;
-right:20px;
-width:60px;
-height:60px;
-font-size:30px;
-border:none;
-border-radius:15px;
-background:#444;
-color:white;
+position:fixed;top:20px;right:20px;
+width:60px;height:60px;font-size:30px;
+border:none;border-radius:15px;background:#444;color:#fff;
+}
+
+#btnVoltar{
+position:fixed;top:50%;left:50%;
+transform:translate(-50%,-50%);
+padding:20px 40px;
+font-size:20px;
+display:none;
 z-index:10;
 }
 </style>
@@ -69,26 +38,18 @@ z-index:10;
 <body>
 
 <canvas id="game"></canvas>
-
 <button id="pular">⬆️</button>
 <button id="andar">➡️</button>
 <button id="pause">⏸️</button>
+<button id="btnVoltar">Jogar Novamente</button>
 
 <script>
-document.addEventListener("contextmenu", e=>e.preventDefault());
+document.addEventListener("contextmenu",e=>e.preventDefault());
 
 let canvas=document.getElementById("game");
 let ctx=canvas.getContext("2d");
 
-function resize(){
-canvas.width=window.innerWidth;
-canvas.height=window.innerHeight;
-player.y=canvas.height-60;
-}
-resize();
-window.onresize=resize;
-
-let player={x:100,y:0,w:50,h:50,vy:0,jump:false}
+let player={x:100,y:0,w:50,h:50,vy:0,jump:false};
 let obst=[];
 let score=0;
 let nivel=1;
@@ -97,6 +58,15 @@ let morto=false;
 let pausado=false;
 
 let musica=new Audio("musica.mp3");
+
+function resize(){
+canvas.width=window.innerWidth;
+canvas.height=window.innerHeight;
+player.y=canvas.height-60;
+obst.forEach(o=>o.y=canvas.height-50);
+}
+resize();
+window.onresize=resize;
 
 function spawn(){
 if(!morto&&!pausado){
@@ -112,7 +82,6 @@ ctx.fillStyle="white";
 ctx.fillRect(player.x,player.y,player.w,player.h);
 
 ctx.fillStyle="red";
-
 for(let i=0;i<obst.length;i++){
 let o=obst[i];
 ctx.fillRect(o.x,o.y,o.w,o.h);
@@ -121,9 +90,7 @@ o.x-=5+nivel;
 if(o.x+o.w<0){
 obst.splice(i,1);
 score++;
-if(score%5==0){
-nivel++;
-}
+if(score%5==0) nivel++;
 }
 
 if(player.x<o.x+o.w &&
@@ -163,14 +130,26 @@ player.jump=true;
 }
 }
 
-document.getElementById("pular").ontouchstart=pular;
-
-document.getElementById("andar").ontouchstart=()=>{
+function andar(){
 player.x+=30;
 if(player.x+player.w>canvas.width){
 player.x=canvas.width-player.w;
 }
 }
+
+// CELULAR
+document.getElementById("pular").ontouchstart=pular;
+document.getElementById("andar").ontouchstart=andar;
+
+// PC
+document.addEventListener("keydown",(e)=>{
+if(e.code==="ArrowUp"||e.code==="Space") pular();
+if(e.code==="ArrowRight"||e.key.toLowerCase()==="d") andar();
+if(e.code==="KeyP"){
+pausado=!pausado;
+if(!pausado) update();
+}
+});
 
 function morrer(){
 if(!morto){
@@ -181,10 +160,7 @@ musica.play();
 let img=new Image();
 img.src="morte.png";
 img.onload=function(){
-ctx.drawImage(img,
-canvas.width/2-100,
-canvas.height/2-100,
-200,200);
+ctx.drawImage(img,canvas.width/2-100,canvas.height/2-100,200,200);
 }
 
 if(score>record){
@@ -192,18 +168,18 @@ record=score;
 localStorage.setItem("record",record);
 }
 
-setTimeout(()=>{
+setTimeout(()=>{document.getElementById("btnVoltar").style.display="block";},2000);
+}
+}
+
+document.getElementById("btnVoltar").onclick=()=>{
 musica.pause();
 location.reload();
-},3000);
-}
 }
 
 document.getElementById("pause").onclick=()=>{
 pausado=!pausado;
-if(!pausado){
-update();
-}
+if(!pausado) update();
 }
 </script>
 </body>
