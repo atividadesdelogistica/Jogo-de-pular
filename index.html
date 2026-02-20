@@ -37,7 +37,7 @@ background:#444;color:white;border:none;border-radius:15px;
 
 <script>
 document.addEventListener("contextmenu", e => e.preventDefault());
-document.addEventListener("gesturestart", e => e.preventDefault()); // desativa zoom
+document.addEventListener("gesturestart", e => e.preventDefault());
 
 let canvas=document.getElementById("game");
 let ctx=canvas.getContext("2d");
@@ -51,8 +51,10 @@ let morto=false;
 let pausado=false;
 
 let musica=new Audio("musica.mp3");
-
 let andarPressionado=false;
+
+let spawnInterval=1500;
+let spawnTimer=setInterval(spawn, spawnInterval);
 
 // REDIMENSIONAMENTO
 function resize(){
@@ -70,7 +72,6 @@ if(!morto&&!pausado){
 obst.push({x:canvas.width,y:canvas.height-50,w:50,h:50});
 }
 }
-setInterval(spawn,1500);
 
 // DESENHO
 function draw(){
@@ -85,7 +86,7 @@ let o=obst[i];
 ctx.fillRect(o.x,o.y,o.w,o.h);
 o.x-=5+nivel;
 
-if(o.x+o.w<0){obst.splice(i,1);score++;if(score%5===0)nivel++;}
+if(o.x+o.w<0){obst.splice(i,1);score++;if(score%5===0) aumentarDificuldade();}
 
 if(player.x<o.x+o.w &&
    player.x+player.w>o.x &&
@@ -98,6 +99,14 @@ ctx.fillStyle="white";
 ctx.font="20px Arial";
 ctx.fillText("Pontos: "+score,20,30);
 ctx.fillText("Recorde: "+record,20,60);
+}
+
+// AUMENTA DIFICULDADE
+function aumentarDificuldade(){
+nivel++; 
+clearInterval(spawnTimer);
+spawnInterval=Math.max(500, spawnInterval-100); // spawn mais rápido
+spawnTimer=setInterval(spawn, spawnInterval);
 }
 
 // LOOP
