@@ -37,7 +37,7 @@ background:#444;color:white;border:none;border-radius:15px;
 
 <script>
 document.addEventListener("contextmenu", e => e.preventDefault());
-document.addEventListener("gesturestart", e => e.preventDefault()); // desativa zoom no celular
+document.addEventListener("gesturestart", e => e.preventDefault()); // desativa zoom
 
 let canvas=document.getElementById("game");
 let ctx=canvas.getContext("2d");
@@ -51,6 +51,8 @@ let morto=false;
 let pausado=false;
 
 let musica=new Audio("musica.mp3");
+
+let andarPressionado=false;
 
 // REDIMENSIONAMENTO
 function resize(){
@@ -74,11 +76,9 @@ setInterval(spawn,1500);
 function draw(){
 ctx.clearRect(0,0,canvas.width,canvas.height);
 
-// jogador
 ctx.fillStyle="white";
 ctx.fillRect(player.x,player.y,player.w,player.h);
 
-// obstáculos
 ctx.fillStyle="red";
 for(let i=0;i<obst.length;i++){
 let o=obst[i];
@@ -86,10 +86,11 @@ ctx.fillRect(o.x,o.y,o.w,o.h);
 o.x-=5+nivel;
 
 if(o.x+o.w<0){obst.splice(i,1);score++;if(score%5===0)nivel++;}
+
 if(player.x<o.x+o.w &&
    player.x+player.w>o.x &&
    player.y<o.y+o.h &&
-   player.y+player.h>o.h){morrer();}
+   player.y+player.h>o.y){morrer();}
 }
 
 // Pontuação
@@ -102,6 +103,13 @@ ctx.fillText("Recorde: "+record,20,60);
 // LOOP
 function update(){
 if(morto||pausado)return;
+
+// ANDAR CONTÍNUO
+if(andarPressionado){
+player.x+=5;
+if(player.x+player.w>canvas.width) player.x=canvas.width-player.w;
+}
+
 player.y+=player.vy;
 player.vy+=1;
 
@@ -117,18 +125,26 @@ update();
 
 // MOVIMENTOS
 function pular(){if(!player.jump){player.vy=-20;player.jump=true;}}
-function andar(){player.x+=30;if(player.x+player.w>canvas.width)player.x=canvas.width-player.w;}
 
-// TECLADO
-document.addEventListener("keydown", e => {
+// CELULAR
+let pularBtn=document.getElementById("pular");
+let andarBtn=document.getElementById("andar");
+
+pularBtn.ontouchstart=pular;
+
+andarBtn.ontouchstart=()=>{andarPressionado=true;}
+andarBtn.ontouchend=()=>{andarPressionado=false;}
+
+// PC
+document.addEventListener("keydown", e=>{
 if(e.code==="ArrowUp"||e.code==="Space") pular();
-if(e.code==="ArrowRight"||e.key.toLowerCase()==="d") andar();
+if(e.code==="ArrowRight"||e.key.toLowerCase()==="d") andarPressionado=true;
 if(e.code==="KeyP"){pausado=!pausado;if(!pausado) update();}
 });
 
-// TOUCH
-document.getElementById("pular").ontouchstart=pular;
-document.getElementById("andar").ontouchstart=andar;
+document.addEventListener("keyup", e=>{
+if(e.code==="ArrowRight"||e.key.toLowerCase()==="d") andarPressionado=false;
+});
 
 // MORTE
 function morrer(){
