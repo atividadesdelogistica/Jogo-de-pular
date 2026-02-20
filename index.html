@@ -1,42 +1,41 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-
-*{
--webkit-user-select:none;
-user-select:none;
--webkit-touch-callout:none;
-}
 
 body{
 margin:0;
 overflow:hidden;
-background:#111;
+touch-action:none;
+user-select:none;
+background:#87ceeb;
 }
 
 canvas{
 display:block;
-background:#87CEEB;
 }
 
 .btn{
 position:fixed;
-bottom:25px;
-width:70px;
-height:70px;
-background:#000a;
+bottom:20px;
+width:80px;
+height:80px;
+background:#0008;
 color:white;
-font-size:35px;
-border-radius:15px;
-display:flex;
-align-items:center;
-justify-content:center;
+font-size:40px;
+text-align:center;
+line-height:80px;
+border-radius:50%;
+z-index:10;
 }
 
-#jump{left:20px}
-#right{right:20px}
+#jump{left:20px;}
+#right{right:20px;}
+#pause{
+left:50%;
+transform:translateX(-50%);
+}
 
 #gameOver{
 position:fixed;
@@ -44,44 +43,43 @@ top:0;
 left:0;
 width:100%;
 height:100%;
-background:#000c;
 display:none;
+background:#000a;
 flex-direction:column;
-align-items:center;
 justify-content:center;
+align-items:center;
+z-index:20;
 }
 
 #retry{
 display:none;
-margin-top:20px;
-padding:15px 30px;
-font-size:20px;
+padding:20px;
+font-size:25px;
 }
 
-img{pointer-events:none;}
+img{
+width:200px;
+}
 
 </style>
 </head>
 
-<body oncontextmenu="return false">
+<body>
 
 <canvas id="game"></canvas>
 
 <div id="jump" class="btn">⬆️</div>
 <div id="right" class="btn">➡️</div>
+<div id="pause" class="btn">⏸️</div>
 
 <div id="gameOver">
-<img src="morte.png" width="200" draggable="false">
-<button id="retry">Jogar novamente</button>
+<img src="https://i.imgur.com/5QF6N7H.png">
+<button id="retry">Jogar de novo</button>
 </div>
 
 <audio id="som" src="musica.mp3"></audio>
 
 <script>
-
-window.onload=function(){
-
-document.addEventListener("copy",e=>e.preventDefault())
 
 const canvas=document.getElementById("game")
 const ctx=canvas.getContext("2d")
@@ -94,6 +92,11 @@ let ground=canvas.height-100
 let score=0
 let level=1
 
+let andando=false
+let pulando=false
+let morreu=false
+let pausado=false
+
 let player={
 x:100,
 y:ground-40,
@@ -101,10 +104,6 @@ w:40,
 h:40,
 dy:0
 }
-
-let andando=false
-let pulando=false
-let morreu=false
 
 let gravidade=0.9
 let pulo=-18
@@ -117,7 +116,7 @@ const som=document.getElementById("som")
 
 function criarObs(){
 
-let altura=40+level*5
+let altura=40+level*3
 
 obstaculos.push({
 x:canvas.width,
@@ -131,7 +130,7 @@ passou:false
 
 function spawn(){
 
-if(morreu)return
+if(morreu||pausado)return
 
 criarObs()
 
@@ -162,14 +161,12 @@ retry.style.display="block"
 retry.onclick=()=>{
 
 som.pause()
-som.currentTime=0
 
 morreu=false
+pausado=false
+andando=false
+
 obstaculos=[]
-score=0
-level=1
-velocidade=5
-intervalo=1500
 
 player.x=100
 player.y=ground-player.h
@@ -181,17 +178,29 @@ spawn()
 
 }
 
+pause.onclick=()=>{
+
+pausado=!pausado
+
+if(pausado){
+pause.innerHTML="▶️"
+som.pause()
+}else{
+pause.innerHTML="⏸️"
+}
+
+}
+
 function loop(){
 
 ctx.clearRect(0,0,canvas.width,canvas.height)
 
-if(andando && !morreu){
+if(andando && !morreu && !pausado){
 player.x+=velocidade
 }
 
 if(player.x<0)player.x=0
-if(player.x>canvas.width-player.w)
-player.x=canvas.width-player.w
+if(player.x>canvas.width-player.w)player.x=canvas.width-player.w
 
 player.dy+=gravidade
 player.y+=player.dy
@@ -207,7 +216,7 @@ ctx.fillRect(player.x,player.y,player.w,player.h)
 
 obstaculos.forEach(o=>{
 
-o.x-=velocidade
+if(!pausado)o.x-=velocidade
 
 ctx.fillStyle="red"
 ctx.fillRect(o.x,o.y,o.w,o.h)
@@ -246,15 +255,15 @@ requestAnimationFrame(loop)
 
 loop()
 
-right.ontouchstart=()=>andando=true
-right.ontouchend=()=>andando=false
-
 jump.ontouchstart=()=>{
-if(!pulando){
+if(!pulando && !pausado){
 player.dy=pulo
 pulando=true
 }
 }
+
+right.ontouchstart=()=>andando=true
+right.ontouchend=()=>andando=false
 
 onkeydown=e=>{
 if(e.key=="ArrowRight")andando=true
@@ -270,8 +279,7 @@ onkeyup=e=>{
 if(e.key=="ArrowRight")andando=false
 }
 
-}
-
 </script>
+
 </body>
 </html>
