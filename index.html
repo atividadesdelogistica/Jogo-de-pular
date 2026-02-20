@@ -1,20 +1,18 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
 
 body{
 margin:0;
 overflow:hidden;
+background:#87ceeb;
 touch-action:none;
 user-select:none;
-background:#87ceeb;
 }
 
-canvas{
-display:block;
-}
+canvas{display:block;}
 
 .btn{
 position:fixed;
@@ -57,9 +55,7 @@ padding:20px;
 font-size:25px;
 }
 
-img{
-width:200px;
-}
+img{width:200px;}
 
 </style>
 </head>
@@ -81,16 +77,17 @@ width:200px;
 
 <script>
 
-const canvas=document.getElementById("game")
+const canvas=game
 const ctx=canvas.getContext("2d")
 
-canvas.width=window.innerWidth
-canvas.height=window.innerHeight
+canvas.width=innerWidth
+canvas.height=innerHeight
 
 let ground=canvas.height-100
 
 let score=0
-let level=1
+let recorde=localStorage.getItem("recorde")||0
+let nivel=1
 
 let andando=false
 let pulando=false
@@ -115,9 +112,7 @@ let intervalo=1500
 const som=document.getElementById("som")
 
 function criarObs(){
-
-let altura=40+level*3
-
+let altura=40+nivel*3
 obstaculos.push({
 x:canvas.width,
 y:ground-altura,
@@ -125,17 +120,12 @@ w:40,
 h:altura,
 passou:false
 })
-
 }
 
 function spawn(){
-
 if(morreu||pausado)return
-
 criarObs()
-
 setTimeout(spawn,intervalo)
-
 }
 
 spawn()
@@ -145,6 +135,11 @@ function morrer(){
 if(morreu)return
 
 morreu=true
+
+if(score>recorde){
+recorde=score
+localStorage.setItem("recorde",recorde)
+}
 
 som.pause()
 som.currentTime=0
@@ -161,6 +156,11 @@ retry.style.display="block"
 retry.onclick=()=>{
 
 som.pause()
+
+score=0
+nivel=1
+velocidade=5
+intervalo=1500
 
 morreu=false
 pausado=false
@@ -179,16 +179,13 @@ spawn()
 }
 
 pause.onclick=()=>{
-
 pausado=!pausado
-
 if(pausado){
 pause.innerHTML="▶️"
 som.pause()
 }else{
 pause.innerHTML="⏸️"
 }
-
 }
 
 function loop(){
@@ -236,7 +233,7 @@ o.passou=true
 score++
 
 if(score%5==0){
-level++
+nivel++
 velocidade+=1
 intervalo-=150
 if(intervalo<500)intervalo=500
@@ -248,7 +245,7 @@ if(intervalo<500)intervalo=500
 ctx.fillStyle="black"
 ctx.font="20px Arial"
 ctx.fillText("Pontos: "+score,20,40)
-ctx.fillText("Nivel: "+level,20,70)
+ctx.fillText("Recorde: "+recorde,20,70)
 
 requestAnimationFrame(loop)
 }
