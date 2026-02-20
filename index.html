@@ -4,6 +4,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <style>
 
+*{
+-webkit-user-select:none;
+user-select:none;
+-webkit-touch-callout:none;
+}
+
 body{
 margin:0;
 overflow:hidden;
@@ -52,10 +58,14 @@ padding:15px 30px;
 font-size:20px;
 }
 
+img{
+pointer-events:none;
+}
+
 </style>
 </head>
 
-<body>
+<body oncontextmenu="return false">
 
 <canvas id="game"></canvas>
 
@@ -63,7 +73,7 @@ font-size:20px;
 <div id="right" class="btn">➡️</div>
 
 <div id="gameOver">
-<img src="morte.png" width="200">
+<img src="morte.png" width="200" draggable="false">
 <button id="retry">Jogar novamente</button>
 </div>
 
@@ -72,6 +82,8 @@ font-size:20px;
 <script>
 
 window.onload=function(){
+
+document.addEventListener("copy",e=>e.preventDefault())
 
 const canvas=document.getElementById("game")
 const ctx=canvas.getContext("2d")
@@ -114,18 +126,24 @@ h:40
 }
 
 function spawn(){
-setTimeout(()=>{
-if(!morreu){
+
+if(morreu)return
+
 criarObs()
-spawn()
+
+setTimeout(spawn,intervalo)
+
 }
-},intervalo)
-}
+
 spawn()
 
 function morrer(){
 
+if(morreu)return
+
 morreu=true
+
+som.pause()
 som.currentTime=0
 som.play()
 
@@ -138,16 +156,21 @@ retry.style.display="block"
 }
 
 retry.onclick=()=>{
+
 som.pause()
 som.currentTime=0
 
 morreu=false
 obstaculos=[]
+
 player.x=100
 player.y=ground-player.h
 
 gameOver.style.display="none"
 retry.style.display="none"
+
+spawn()
+
 }
 
 function loop(){
